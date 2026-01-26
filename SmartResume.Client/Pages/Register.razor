@@ -1,0 +1,90 @@
+﻿@page "/register"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@using SmartResume.Client.Models.Auth;
+
+<PageTitle>Register</PageTitle>
+
+<h3>Register</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <EditForm Model="@registerModel" OnValidSubmit="@HandleRegistration" FormName="registerForm">
+
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            @if (!string.IsNullOrEmpty(apiErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @apiErrorMessage
+                </div>
+            }
+
+            <div class="form-floating mb-3">
+                <InputText id="firstName" class="form-control" @bind-Value="registerModel.FirstName" />
+                <label for="firstName">First Name</label>
+                <ValidationMessage For="@(() => registerModel.FirstName)" class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="lastName" class="form-control" @bind-Value="registerModel.LastName" />
+                <label for="lastName">Last Name</label>
+                <ValidationMessage For="@(() => registerModel.LastName)" class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="email" type="email" class="form-control" @bind-Value="registerModel.Email" />
+                <label for="email">Email</label>
+                <ValidationMessage For="@(() => registerModel.Email)" class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" />
+                <label for="password">Password</label>
+                <ValidationMessage For="@(() => registerModel.Password)" class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" />
+                <label for="confirmPassword">Confirm Password</label>
+                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="text-danger" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Register</button>
+
+        </EditForm>
+    </div>
+</div>
+
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+    private string? apiErrorMessage;
+
+    private async Task HandleRegistration()
+    {
+        apiErrorMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/account/register", registerModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                var errorResponse = await response.Content.ReadFromJsonAsync<object>();
+                apiErrorMessage = "Registration failed. Please check your details and try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            apiErrorMessage = "An error occurred while connecting to the server. Please try again later.";
+        }
+    }
+}

@@ -1,0 +1,29 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using SmartResume.Client.Layout
+
+<CascadingAuthenticationState>
+
+    <div class="page-layout">
+        
+        <SmartResume.Client.Layout.TopBar />
+
+        
+        <main class="container mt-4">
+            @Body
+        </main>
+    </div>
+
+  @*   <NavMenu />
+
+    <div class="container mt-4">
+        @Body
+    </div> *@
+
+</CascadingAuthenticationState>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

@@ -1,0 +1,45 @@
+﻿/* Ana Kapsayıcı */
+.top-bar {
+    background-color: #1b263b; /* Koyu Lacivert Modern Renk */
+    height: 60px; /* Sabit Yükseklik */
+    display: flex;
+    align-items: center; /* Dikey ortalama garantisi */
+    padding: 0 1rem;
+}
+
+/* Logo Tasarımı */
+.navbar-brand {
+    text-decoration: none;
+    font-size: 1.25rem;
+    color: white;
+    display: flex;
+    align-items: center;
+}
+
+/* --- LİNKLER İÇİN ORTAK TASARIM --- */
+/* Hem NavLink hem de Logout <a> etiketi bu sınıfı kullanır */
+.custom-link {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    /* Hizalama Garantisi */
+    display: flex;
+    align-items: center;
+    height: 40px; /* Linklerin yüksekliği eşit */
+}
+
+    /* Hover (Üzerine Gelince) */
+    .custom-link:hover {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Aktif Link (Bulunulan Sayfa) */
+    .custom-link.active {
+        color: white;
+        background-color: #0d6efd; /* Bootstrap Primary Mavisi */
+    }

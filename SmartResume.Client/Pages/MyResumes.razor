@@ -1,0 +1,246 @@
+﻿@page "/my-resumes"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@using SmartResume.Client.Models.Resume;
+@using System.Net.Http.Headers;
+@using Blazored.LocalStorage;
+
+@inject HttpClient Http
+@inject ILocalStorageService localStorage
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>My Resumes</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+
+        @* --- LEFT COLUMN: LIST OF RESUMES --- *@
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">CV Library</h5>
+                    <a href="upload-resume" class="btn btn-sm btn-light">+ New</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    @if (isLoading)
+                    {
+                        <div class="p-3 text-center">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            Loading...
+                        </div>
+                    }
+                    else if (resumes == null || resumes.Count == 0)
+                    {
+                        <div class="p-3 text-muted text-center">No CVs found.</div>
+                    }
+                    else
+                    {
+                        @foreach (var resume in resumes)
+                        {
+                            <button type="button"
+                                    class="list-group-item list-group-item-action @(selectedResume?.ResumeID == resume.ResumeID ? "active" : "")"
+                                    @onclick="() => SelectResume(resume)">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1 text-truncate">@resume.OriginalFileName</h6>
+                                </div>
+                                <small>@resume.UploadedAt.ToShortDateString()</small>
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* --- RIGHT COLUMN: SELECTED RESUME DETAILS --- *@
+        <div class="col-md-8">
+            @if (selectedResume != null)
+            {
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4>@selectedResume.UserGivenTitle</h4>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>File Name:</strong> @selectedResume.OriginalFileName</p>
+                        <p><strong>Uploaded:</strong> @selectedResume.UploadedAt.ToString("g")</p>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Previewing PDF inside the browser requires complex token handling.
+                            Please download to view.
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            @* VIEW / DOWNLOAD BUTTON *@
+                            <button class="btn btn-primary" @onclick="DownloadPdf">
+                                <i class="bi bi-eye"></i> View / Download PDF
+                            </button>
+
+                            @* ANALYZE BUTTON (Future Phase) *@
+                            <button class="btn btn-warning text-white" @onclick="AnalyzeResume">
+                                <i class="bi bi-magic"></i> Analyze with AI
+                            </button>
+
+                            @* DELETE BUTTON *@
+                            <button class="btn btn-danger ms-auto" @onclick="DeleteResume">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-secondary text-center mt-5">
+                    <h5>Select a CV from the list to view details.</h5>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ResumeResponseModel> resumes = new List<ResumeResponseModel>();
+    private ResumeResponseModel? selectedResume;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadResumes();
+    }
+
+    private async Task LoadResumes()
+    {
+        isLoading = true;
+        try
+        {
+            // Add Token manually to be safe
+            var token = await localStorage.GetItemAsync<string>("authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            resumes = await Http.GetFromJsonAsync<List<ResumeResponseModel>>("api/resume") ?? new List<ResumeResponseModel>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading resumes: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectResume(ResumeResponseModel resume)
+    {
+        selectedResume = resume;
+    }
+
+    private async Task DeleteResume()
+    {
+        if (selectedResume == null) return;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{selectedResume.OriginalFileName}'?");
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/resume/{selectedResume.ResumeID}");
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadResumes(); // Refresh list
+                selectedResume = null; // Deselect
+            }
+            else
+            {
+                Console.WriteLine("Delete failed.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting: {ex.Message}");
+        }
+    }
+
+    // Downloads the PDF by creating a temporary link with the Token
+    // Since we can't easily add headers to a simple <a href>,
+    // we use a trick: we fetch the file as Blob in JS, but for now,
+    // let's try direct API call if browser handles cookies/auth automatically,
+    // otherwise we need a more complex JS download helper.
+    // FOR NOW: Simple fetch using C# client.
+    private async Task DownloadPdf()
+    {
+        if (selectedResume == null) return;
+
+        try
+        {
+            // Get the file bytes securely
+            var fileBytes = await Http.GetByteArrayAsync($"api/resume/{selectedResume.ResumeID}/download");
+
+            // Trigger download via JS (We need to implement this small JS function)
+            // Or simply open it.
+            var fileName = selectedResume.OriginalFileName;
+            var contentType = "application/pdf";
+
+            // Create a stream reference for JS
+            using var stream = new MemoryStream(fileBytes);
+            using var streamRef = new DotNetStreamReference(stream);
+
+            // Call a JS function to download/view (See Step 4)
+            await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Download error: " + ex.Message);
+        }
+    }
+
+    private async Task AnalyzeResume()
+    {
+        // Placeholder for Phase 2/4
+        Console.WriteLine($"Analyzing Resume ID: {selectedResume?.ResumeID}...");
+        try
+        {
+            // Construct the correct endpoint URL matching your Controller route
+            // Assuming Controller: [HttpPost("analyze/{id}")]
+            string requestUrl = $"api/resume/analyze/{selectedResume.ResumeID}";
+
+            // Send a POST request.
+            // We pass 'null' as the content because the ID is in the URL and we aren't sending a JSON body.
+            var response = await Http.PostAsync(requestUrl, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Analysis successful.");
+
+                // Refresh the grid to show the updated data (e.g., enable a 'View' button)
+                await LoadResumes();
+
+                // Optional: Clear selection or keep it to show details
+                selectedResume = null;
+            }
+            else
+            {
+                // Read the error message sent from the controller (e.g., "Physical file not found")
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                // Eğer mesaj boşsa varsayılan bir uyarı göster
+                if (string.IsNullOrEmpty(errorMsg))
+                {
+                    Console.WriteLine($"Hata oluştu ancak sunucu detay vermedi. Kod: {response.StatusCode}");
+                }
+                else
+                {
+                    Console.WriteLine($"OCR extract failed. Server responded: {errorMsg}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Corrected the log message from "deleting" to "analyzing"
+            Console.WriteLine($"Error analyzing resume: {ex.Message}");
+        }
+
+    }
+}

@@ -1,0 +1,119 @@
+﻿@page "/upload-resume"
+
+@using System.Net.Http.Headers
+@using Blazored.LocalStorage  
+
+@inject HttpClient Http
+@inject ILocalStorageService localStorage 
+
+@* Component UI Code remains the same *@
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Upload New Resume</h5>
+        <p class="card-text text-muted">Please select a PDF file (Max 5MB).</p>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="@alertClass" role="alert">
+                @message
+            </div>
+        }
+
+        <div class="mb-3">
+            <InputFile OnChange="@LoadFile" class="form-control" accept=".pdf" />
+        </div>
+
+        @if (selectedFile != null)
+        {
+            <div class="mb-3">
+                <strong>Selected:</strong> @selectedFile.Name (@(selectedFile.Size / 1024) KB)
+            </div>
+
+            <button class="btn btn-success" @onclick="UploadFile" disabled="@isUploading">
+                @if (isUploading)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span> Uploading...</span>
+                }
+                else
+                {
+                    <span><i class="bi bi-cloud-upload"></i> Upload Now</span>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private IBrowserFile? selectedFile;
+    private string message = "";
+    private string alertClass = "";
+    private bool isUploading = false;
+    private long maxFileSize = 1024 * 1024 * 10; // 10 MB Limit
+
+    private void LoadFile(InputFileChangeEventArgs e)
+    {
+        message = "";
+        selectedFile = e.File;
+    }
+
+    private async Task UploadFile()
+    {
+        if (selectedFile == null) return;
+
+        isUploading = true;
+        message = "";
+
+        try
+        {
+            // --- 3. KRİTİK DÜZELTME: TOKEN'I EKLE ---
+            // LocalStorage'dan token'ı çekiyoruz
+            var token = await localStorage.GetItemAsync<string>("authToken");
+            
+            // Eğer token varsa, HttpClient'ın başlığına 'Bearer <token>' olarak ekliyoruz
+            if (string.IsNullOrEmpty(token))
+            {
+                message = "Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.";
+                alertClass = "alert alert-warning";
+                isUploading = false;
+                return;
+            }
+            // ---------------------------------------
+
+            using var content = new MultipartFormDataContent();
+            
+            var fileContent = new StreamContent(selectedFile.OpenReadStream(maxFileSize));
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+
+            content.Add(fileContent, "file", selectedFile.Name);
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/resume/upload");
+            request.Content = content;
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "CV uploaded successfully!";
+                alertClass = "alert alert-success";
+                selectedFile = null;
+            }
+            else
+            {
+                message = $"Upload failed: {response.StatusCode} ({response.ReasonPhrase})";
+                alertClass = "alert alert-danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+            alertClass = "alert alert-danger";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+}

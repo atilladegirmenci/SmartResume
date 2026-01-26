@@ -1,0 +1,122 @@
+﻿@page "/login"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider authStateProvider
+@inject ILocalStorageService localStorage
+@using System.Text.Json.Serialization
+@using SmartResume.Client.Models.Auth;
+@using System.Text.Json
+@using SmartResume.Client.Auth
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
+
+<PageTitle>Login</PageTitle>
+
+<h3>Login</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin" FormName="loginForm">
+
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            @* This will hold any errors from the API (e.g., "Invalid credentials") *@
+            @if (!string.IsNullOrEmpty(apiErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @apiErrorMessage
+                </div>
+            }
+
+            <div class="form-floating mb-3">
+                <InputText id="email" type="email" class="form-control" @bind-Value="loginModel.Email" />
+                <label for="email">Email</label>
+                <ValidationMessage For="@(() => loginModel.Email)" class="text-danger" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
+                <label for="password">Password</label>
+                <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Login</button>
+
+        </EditForm>
+
+        <div class="mt-3 text-center">
+            <p>Don't have an account? <a href="/register">Create a new account</a></p>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    // 1. The DTO instance for the form binding
+    private LoginModel loginModel = new LoginModel();
+
+    // 2. A string to hold API error messages
+    private string? apiErrorMessage;
+
+    // 3. A private record to easily deserialize the JSON response from the API
+    public class LoginResponse
+    {
+        [JsonPropertyName("token")]
+        public string? Token { get; set; }
+
+        [JsonPropertyName("message")]
+        public string? Message { get; set; }
+    }
+    // 4. This method is called when the form is valid and submitted
+    private async Task HandleLogin()
+    {
+        apiErrorMessage = null;
+        Console.WriteLine("LOGIN: İşlem başladı...");
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/account/login", loginModel);
+
+            // 1. Önce HAM CEVABI (String olarak) okuyalım
+            var jsonString = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"LOGIN API CEVABI: {jsonString}"); // <-- KONSOLDA BUNU ARAYIN
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonSerializer.Deserialize<LoginResponse>(jsonString);
+
+                Console.WriteLine($"LOGIN: Algılanan Token: {result?.Token}");
+
+
+                if (!string.IsNullOrEmpty(result?.Token))
+                {
+                    // 3. Token'ı kaydet
+                    await localStorage.SetItemAsync("authToken", result?.Token);
+                    Console.WriteLine("LOGIN: Token LocalStorage'a YAZILDI.");
+
+                    ((ApiAuthenticationStateProvider)authStateProvider).MarkUserAsAuthenticated(result?.Token);
+
+                    Navigation.NavigateTo("my-resumes");
+                }
+                else
+                {
+                    apiErrorMessage = "Login başarılı ama Token okunamadı!";
+                    Console.WriteLine("LOGIN HATASI: Token null.");
+                }
+            }
+            else
+            {
+                apiErrorMessage = $"Login failed: {jsonString}";
+            }
+        }
+        catch (Exception ex)
+        {
+            // 8. Handle network or other exceptions
+            apiErrorMessage = "An error occurred while connecting to the server.";
+            Console.WriteLine($"LOGIN EXCEPTION: {ex.Message}");
+        }
+    }
+}

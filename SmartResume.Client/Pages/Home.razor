@@ -1,0 +1,51 @@
+﻿@page "/"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Home - SmartCV</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        @* --- USER IS LOGGED IN --- *@
+        <div class="container mt-5 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">redirecting...</p>
+        </div>
+    </Authorized>
+
+    <NotAuthorized>
+        @* --- USER IS NOT LOGGED IN / GUEST --- *@
+        
+        <div class="container mt-5 text-center">
+            <div class="alert alert-light shadow-sm p-5">
+                <h1 class="display-4">Welcome to SmartCV!</h1>
+                <p class="lead">Upload your CV, let AI analyze it, and discover the best job opportunities for you.</p>
+                @* <div class="mt-4">
+                    <a href="login" class="btn btn-primary btn-lg me-2">Giriş Yap</a>
+                    <a href="register" class="btn btn-outline-secondary btn-lg">Kayıt Ol</a>
+                </div> *@
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Kullanıcının durumunu öğren
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // 2. Eğer giriş yapmışsa...
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            // 3. ...onu 'my-resumes' sayfasına fırlat!
+            Navigation.NavigateTo("my-resumes");
+        }
+    }
+}
