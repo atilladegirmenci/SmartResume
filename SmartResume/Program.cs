@@ -52,6 +52,7 @@ builder.Services
     });
 
 builder.Services.AddScoped<IOcrService, OcrService>();
+builder.Services.AddScoped<IGeminiService, GeminiService>();
 
 var app = builder.Build();
 

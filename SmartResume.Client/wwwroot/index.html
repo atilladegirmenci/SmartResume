@@ -36,6 +36,17 @@
             window.open(url, "_blank");
         };
 
+        window.createPdfUrl = async (contentStreamReference) => {
+            const arrayBuffer = await contentStreamReference.arrayBuffer();
+            const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            return url;
+        }
+
+        window.revokeUrl = (url) => {
+            URL.revokeObjectURL(url);
+        }
+
     </script>
 </body>
 

@@ -23,7 +23,7 @@ namespace SmartResume.Data.Models
 
         // Performance Optimization: Store the raw text extracted by Tesseract
         public string? ExtractedRawText { get; set; }
-
+        public string? AnalysisResult { get; set; }
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastAnalyzedAt { get; set; } // To track when it was last processed by an ML model
 

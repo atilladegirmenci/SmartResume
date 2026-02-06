@@ -32,6 +32,30 @@ namespace SmartResume.Data
             // Call the base method first
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Education>()
+                .HasOne(e => e.Resume)
+                .WithMany(r => r.Educations)
+                .HasForeignKey(e => e.ResumeID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Experience>()
+                .HasOne(e => e.Resume)
+                .WithMany(r => r.Experiences)
+                .HasForeignKey(e => e.ResumeID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ResumeSkill>()
+                .HasOne(rs => rs.Resume)
+                .WithMany(r => r.ResumeSkills)
+                .HasForeignKey(rs => rs.ResumeID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ResumeSkill>()
+                .HasOne(rs => rs.Skill)
+                .WithMany(s => s.ResumeSkills)
+                .HasForeignKey(rs => rs.SkillID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // 1. Ensure User.Email is unique
             // We want to prevent two users from registering with the same email.
             modelBuilder.Entity<User>()

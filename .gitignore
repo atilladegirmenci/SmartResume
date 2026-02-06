@@ -16,3 +16,6 @@
 # NuGet
 *.nupkg
 packages/
+
+# test CV's
+UploadedCVs/

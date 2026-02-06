@@ -4,6 +4,7 @@
 @using SmartResume.Client.Models.Resume;
 @using System.Net.Http.Headers;
 @using Blazored.LocalStorage;
+@using System.Globalization;
 
 @inject HttpClient Http
 @inject ILocalStorageService localStorage
@@ -12,97 +13,292 @@
 
 <PageTitle>My Resumes</PageTitle>
 
-<div class="container mt-4">
+<div class="container-fluid mt-4 px-4"> 
     <div class="row">
 
         @* --- LEFT COLUMN: LIST OF RESUMES --- *@
-        <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">CV Library</h5>
-                    <a href="upload-resume" class="btn btn-sm btn-light">+ New</a>
-                </div>
-                <div class="list-group list-group-flush">
-                    @if (isLoading)
-                    {
-                        <div class="p-3 text-center">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                            Loading...
-                        </div>
-                    }
-                    else if (resumes == null || resumes.Count == 0)
-                    {
-                        <div class="p-3 text-muted text-center">No CVs found.</div>
-                    }
-                    else
-                    {
-                        @foreach (var resume in resumes)
-                        {
-                            <button type="button"
-                                    class="list-group-item list-group-item-action @(selectedResume?.ResumeID == resume.ResumeID ? "active" : "")"
-                                    @onclick="() => SelectResume(resume)">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1 text-truncate">@resume.OriginalFileName</h6>
-                                </div>
-                                <small>@resume.UploadedAt.ToShortDateString()</small>
-                            </button>
-                        }
-                    }
-                </div>
-            </div>
+<div class="col-md-3">
+    @* 1. position: sticky -> Ekranı kaydırınca sabit kalır.
+       2. max-height: 85vh -> Boyutu EN FAZLA ekranın %85'i kadar olur. 
+          (Liste kısaysa küçülür, uzunsan buraya kadar büyür).
+       3. display: flex & flex-column -> İçeriği alt alta dizer.
+    *@
+    <div class="card shadow-sm border-0 bg-light" 
+         style="position: sticky; top: 1.5rem; max-height: 85vh; display: flex; flex-direction: column;">
+        
+        @* --- BAŞLIK --- *@
+        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between p-3">
+            <h5 class="fw-bold text-secondary mb-0">
+                <i class="bi bi-collection-fill me-2"></i>CV Library
+            </h5>
+            <span class="badge bg-white text-dark shadow-sm rounded-pill border">@resumes.Count</span>
         </div>
 
-        @* --- RIGHT COLUMN: SELECTED RESUME DETAILS --- *@
-        <div class="col-md-8">
-            @if (selectedResume != null)
+        @* --- LİSTE ALANI --- *@
+        @* overflow-y: auto -> Eğer liste max-height'ı geçerse sadece burası scroll olur *@
+        <div class="card-body p-2 overflow-auto custom-scrollbar">
+            
+            @if (isLoading)
             {
-                <div class="card shadow-sm">
-                    <div class="card-header bg-white">
-                        <h4>@selectedResume.UserGivenTitle</h4>
-                    </div>
-                    <div class="card-body">
-                        <p><strong>File Name:</strong> @selectedResume.OriginalFileName</p>
-                        <p><strong>Uploaded:</strong> @selectedResume.UploadedAt.ToString("g")</p>
-
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i>
-                            Previewing PDF inside the browser requires complex token handling.
-                            Please download to view.
-                        </div>
-
-                        <div class="d-flex gap-2 mt-4">
-                            @* VIEW / DOWNLOAD BUTTON *@
-                            <button class="btn btn-primary" @onclick="DownloadPdf">
-                                <i class="bi bi-eye"></i> View / Download PDF
-                            </button>
-
-                            @* ANALYZE BUTTON (Future Phase) *@
-                            <button class="btn btn-warning text-white" @onclick="AnalyzeResume">
-                                <i class="bi bi-magic"></i> Analyze with AI
-                            </button>
-
-                            @* DELETE BUTTON *@
-                            <button class="btn btn-danger ms-auto" @onclick="DeleteResume">
-                                <i class="bi bi-trash"></i> Delete
-                            </button>
-                        </div>
-                    </div>
+                <div class="text-center text-muted py-3">
+                    <div class="spinner-border spinner-border-sm mb-2"></div>
+                    <p class="small mb-0">Loading...</p>
+                </div>
+            }
+            else if (resumes == null || resumes.Count == 0)
+            {
+                <div class="text-center text-muted py-4 opacity-50">
+                    <i class="bi bi-inbox display-6"></i>
+                    <p class="mt-2 small mb-0">List is empty.</p>
                 </div>
             }
             else
             {
-                <div class="alert alert-secondary text-center mt-5">
-                    <h5>Select a CV from the list to view details.</h5>
+                <div class="d-grid gap-2">
+                    @foreach (var resume in resumes)
+                    {
+                        bool isActive = selectedResume?.ResumeID == resume.ResumeID;
+                        
+                        <button type="button"
+                                class="btn text-start p-3 rounded-3 border-0 position-relative @(isActive ? "bg-white shadow-sm border-start border-primary border-4" : "bg-white hover-shadow")"
+                                style="transition: all 0.2s;"
+                                @onclick="() => SelectResume(resume)">
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h6 class="mb-0 text-truncate fw-semibold text-dark" style="max-width: 90%;">
+                                    @resume.OriginalFileName
+                                </h6>
+                            </div>
+                            
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                <i class="bi bi-clock me-1"></i>@resume.UploadedAt.ToShortDateString()
+                            </small>
+                        </button>
+                    }
                 </div>
             }
         </div>
+
+        @* --- FOOTER: UPLOAD BUTTON --- *@
+        @* Listenin hemen altında biter, liste uzunsa en altta sabit kalır *@
+        <div class="card-footer bg-transparent border-0 p-3">
+            <a href="upload-resume" class="btn btn-dark w-100 rounded-pill shadow-sm">
+                <i class="bi bi-plus-lg me-2"></i> New Upload
+            </a>
+        </div>
+        
     </div>
 </div>
 
+        @* --- RIGHT COLUMN --- *@
+        <div class="col-md-8">
+    @if (selectedResume != null)
+    {
+        @* --- 1. RESUME DETAILS CARD --- *@
+       <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">@selectedResume.UserGivenTitle</h4>
+                        
+                        @* Tarih Bilgisi *@
+                        <small class="text-muted">
+                            <i class="bi bi-calendar3 me-1"></i> Uploaded: @selectedResume.UploadedAt.ToString("g")
+                        </small>
+                    </div>
+                    
+                    <div class="card-body">
+                        
+                        @* --- Dosya Adı ve Butonlar (Üst Kısım) --- *@
+                        <div class="d-flex flex-wrap justify-content-center align-items-center mb-3 gap-3">
+                            
+                            @* --- ACTION BUTTONS (PDF'in Üstüne Taşındı) --- *@
+                            <div class="btn-group shadow-sm">
+                               <button class="btn btn-primary" @onclick="DownloadPdf">
+                                    <i class="bi bi-download me-1"></i> Download
+                               </button>
+                                
+                               <button class="btn btn-warning text-white" @onclick="AnalyzeResume" disabled="@isAnalyzing">
+            @if (isAnalyzing)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span> Analyzing...</span>
+            }
+            else
+            {
+                <i class="bi bi-magic me-1"></i> <span> Analyze AI</span>
+            }
+        </button>
+                                
+                                <button class="btn btn-danger" @onclick="DeleteResume">
+            <i class="bi bi-trash me-1"></i> Delete
+        </button>
+                            </div>
+                        </div>
+
+                        @* --- PDF PREVIEW ALANI --- *@
+                        <div class="border rounded bg-light d-flex justify-content-center align-items-center mb-3 shadow-sm" 
+                             style="height: 1050px; overflow: hidden;">
+                             
+                            @if (!string.IsNullOrEmpty(pdfBlobUrl))
+                            {
+                                <iframe src="@pdfBlobUrl" style="width:100%; height:100%; border:none;"></iframe>
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted">
+                                    <div class="spinner-border spinner-border-sm mb-2"></div>
+                                    <p>Loading PDF Preview...</p>
+                                </div>
+                            }
+                        </div>
+
+                        @* --- HATA MESAJI (Varsa) --- *@
+                        @if (analysisError != null)
+                        {
+                            <div class="alert alert-danger mt-3">@analysisError</div>
+                        }
+                    </div>
+                </div>
+
+        @* --- 2. EDIT ANALYSIS RESULTS FORM (Düzenlenebilir Alan) --- *@
+        @if (analysisResult != null)
+        {
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">Edit Analysis Results</h5>
+                </div>
+                <div class="card-body">
+
+                    @* --- Personal Info --- *@
+                    <h6 class="text-secondary border-bottom pb-2">Personal Information</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">First Name</label>
+                            <input type="text" class="form-control" @bind-value="analysisResult.FirstName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Last Name</label>
+                            <input type="text" class="form-control" @bind-value="analysisResult.LastName" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="text" class="form-control" @bind-value="analysisResult.Email" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Phone</label>
+                            <input type="text" class="form-control" @bind-value="analysisResult.Phone" />
+                        </div>
+                    </div>
+
+                    @* --- Summary --- *@
+                    <h6 class="text-secondary border-bottom pb-2 mt-4">Summary</h6>
+                    <textarea class="form-control" rows="4" @bind="analysisResult.Summary"></textarea>
+
+                    @* --- Skills & Languages --- *@
+                    <h6 class="text-secondary border-bottom pb-2 mt-4">Skills</h6>
+                    <textarea class="form-control" rows="2" @bind="editableSkills"></textarea>
+
+                    <h6 class="text-secondary border-bottom pb-2 mt-4">Languages</h6>
+                    <textarea class="form-control" rows="2" @bind="editableLanguages"></textarea>
+
+                    @* --- Experience --- *@
+                    <h6 class="text-secondary border-bottom pb-2 mt-4">Experience</h6>
+                    @if (analysisResult.Experience != null)
+                    {
+                        for (int i = 0; i < analysisResult.Experience.Count; i++)
+                        {
+                            <div class="card mb-2 bg-light">
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="small text-muted">Company</label>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   @bind-value="analysisResult.Experience[i].Company" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="small text-muted">Title</label>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   @bind-value="analysisResult.Experience[i].Title" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @* --- Education --- *@
+                    <h6 class="text-secondary border-bottom pb-2 mt-4">Education</h6>
+                    @if (analysisResult.Education != null)
+                    {
+                        for (int i = 0; i < analysisResult.Education.Count; i++)
+                        {
+                            <div class="card mb-2 bg-light">
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="small text-muted">School</label>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   @bind-value="analysisResult.Education[i].School" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="small text-muted">Degree</label>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   @bind-value="analysisResult.Education[i].Degree" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                </div>
+
+                @* --- Save Button --- *@
+                <div class="card-footer bg-white">
+                    <button class="btn btn-success" disabled="@isSaving" @onclick="SaveResumeData">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2">Saving...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-save me-1"></i> <span>Save Changes</span>
+                        }
+                    </button>
+                    @if (saveError != null)
+                    {
+                        <div class="alert alert-danger mt-2">@saveError</div>
+                    }
+                    @if (saveSuccess != null)
+                    {
+                        <div class="alert alert-success mt-2">@saveSuccess</div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        @* --- HİÇBİR ŞEY SEÇİLİ DEĞİLSE --- *@
+        <div class="alert alert-secondary text-center mt-5">
+            <h5>Select a CV from the list to view details.</h5>
+        </div>
+    }
+</div>
+    </div><!-- row -->
+</div><!-- container -->
 @code {
     private List<ResumeResponseModel> resumes = new List<ResumeResponseModel>();
     private ResumeResponseModel? selectedResume;
     private bool isLoading = true;
+    private ResumeAnalysisModel? analysisResult;
+    private bool isAnalyzing = false;
+    private string? analysisError;
+    private bool isSaving = false;
+    private string? saveError;
+    private string? saveSuccess;
+    private string editableSkills = "";
+    private string editableLanguages = "";
+    private string? pdfBlobUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,13 +310,11 @@
         isLoading = true;
         try
         {
-            // Add Token manually to be safe
             var token = await localStorage.GetItemAsync<string>("authToken");
             if (!string.IsNullOrEmpty(token))
             {
                 Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
-
             resumes = await Http.GetFromJsonAsync<List<ResumeResponseModel>>("api/resume") ?? new List<ResumeResponseModel>();
         }
         catch (Exception ex)
@@ -133,15 +327,52 @@
         }
     }
 
-    private void SelectResume(ResumeResponseModel resume)
+    private async Task SelectResume(ResumeResponseModel resume)
     {
         selectedResume = resume;
+        analysisResult = null;
+        analysisError = null;
+
+        await LoadPdfPreview(resume.ResumeID);
+    }
+
+    private async Task LoadPdfPreview(int resumeId)
+    {
+        // Önceki URL varsa temizle (bellek yönetimi)
+        if (!string.IsNullOrEmpty(pdfBlobUrl))
+        {
+            await JS.InvokeVoidAsync("revokeUrl", pdfBlobUrl);
+            pdfBlobUrl = null;
+        }
+
+        try
+        {
+            // 1. Yetkili HttpClient ile veriyi stream olarak çek
+            var stream = await Http.GetStreamAsync($"api/resume/{resumeId}/download");
+            
+            // 2. Stream'i JS'e gönderilebilir formata sok
+            using var streamRef = new DotNetStreamReference(stream);
+
+            // 3. JS fonksiyonunu çağırıp Blob URL al
+            pdfBlobUrl = await JS.InvokeAsync<string>("createPdfUrl", streamRef);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"PDF önizleme hatası: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!string.IsNullOrEmpty(pdfBlobUrl))
+        {
+            await JS.InvokeVoidAsync("revokeUrl", pdfBlobUrl);
+        }
     }
 
     private async Task DeleteResume()
     {
         if (selectedResume == null) return;
-
         bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{selectedResume.OriginalFileName}'?");
         if (!confirmed) return;
 
@@ -150,12 +381,8 @@
             var response = await Http.DeleteAsync($"api/resume/{selectedResume.ResumeID}");
             if (response.IsSuccessStatusCode)
             {
-                await LoadResumes(); // Refresh list
-                selectedResume = null; // Deselect
-            }
-            else
-            {
-                Console.WriteLine("Delete failed.");
+                await LoadResumes();
+                selectedResume = null;
             }
         }
         catch (Exception ex)
@@ -164,31 +391,15 @@
         }
     }
 
-    // Downloads the PDF by creating a temporary link with the Token
-    // Since we can't easily add headers to a simple <a href>,
-    // we use a trick: we fetch the file as Blob in JS, but for now,
-    // let's try direct API call if browser handles cookies/auth automatically,
-    // otherwise we need a more complex JS download helper.
-    // FOR NOW: Simple fetch using C# client.
     private async Task DownloadPdf()
     {
         if (selectedResume == null) return;
-
         try
         {
-            // Get the file bytes securely
             var fileBytes = await Http.GetByteArrayAsync($"api/resume/{selectedResume.ResumeID}/download");
-
-            // Trigger download via JS (We need to implement this small JS function)
-            // Or simply open it.
             var fileName = selectedResume.OriginalFileName;
-            var contentType = "application/pdf";
-
-            // Create a stream reference for JS
             using var stream = new MemoryStream(fileBytes);
             using var streamRef = new DotNetStreamReference(stream);
-
-            // Call a JS function to download/view (See Step 4)
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
         }
         catch (Exception ex)
@@ -199,48 +410,122 @@
 
     private async Task AnalyzeResume()
     {
-        // Placeholder for Phase 2/4
-        Console.WriteLine($"Analyzing Resume ID: {selectedResume?.ResumeID}...");
+        if (selectedResume == null) return;
+
+        isAnalyzing = true;
+        analysisResult = null;
+        analysisError = null;
+
         try
         {
-            // Construct the correct endpoint URL matching your Controller route
-            // Assuming Controller: [HttpPost("analyze/{id}")]
-            string requestUrl = $"api/resume/analyze/{selectedResume.ResumeID}";
-
-            // Send a POST request.
-            // We pass 'null' as the content because the ID is in the URL and we aren't sending a JSON body.
-            var response = await Http.PostAsync(requestUrl, null);
+            Console.WriteLine($"Analyzing Resume ID: {selectedResume.ResumeID}...");
+            var response = await Http.PostAsync($"api/resume/analyze/{selectedResume.ResumeID}", null);
 
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine("Analysis successful.");
+                analysisResult = await response.Content.ReadFromJsonAsync<ResumeAnalysisModel>();
 
-                // Refresh the grid to show the updated data (e.g., enable a 'View' button)
-                await LoadResumes();
-
-                // Optional: Clear selection or keep it to show details
-                selectedResume = null;
+                // Populate the textareas from the list
+                if (analysisResult != null)
+                {
+                    editableSkills = string.Join(", ", analysisResult.Skills ?? new List<string>());
+                    editableLanguages = string.Join(", ", analysisResult.Languages ?? new List<string>());
+                }
             }
             else
             {
-                // Read the error message sent from the controller (e.g., "Physical file not found")
                 var errorMsg = await response.Content.ReadAsStringAsync();
-                // Eğer mesaj boşsa varsayılan bir uyarı göster
-                if (string.IsNullOrEmpty(errorMsg))
-                {
-                    Console.WriteLine($"Hata oluştu ancak sunucu detay vermedi. Kod: {response.StatusCode}");
-                }
-                else
-                {
-                    Console.WriteLine($"OCR extract failed. Server responded: {errorMsg}");
-                }
+                analysisError = $"Analysis failed: {errorMsg}";
             }
         }
         catch (Exception ex)
         {
-            // Corrected the log message from "deleting" to "analyzing"
-            Console.WriteLine($"Error analyzing resume: {ex.Message}");
+            analysisError = $"Error: {ex.Message}";
         }
-
+        finally
+        {
+            isAnalyzing = false;
+        }
     }
+    private async Task SaveResumeData()
+    {
+        if (selectedResume == null || analysisResult == null)
+            return;
+
+        isSaving = true;
+        saveError = null;
+        saveSuccess = null;
+
+        try
+        {
+            var finalSkills = editableSkills.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(s => s.Trim()).ToList();
+
+            var finalLangs = editableLanguages.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                              .Select(s => s.Trim()).ToList();
+
+            var request = new SaveResumeAnalysisRequest
+            {
+                Skills = finalSkills,
+
+                Education = analysisResult.Education.Select(e => new SaveEducationDto
+                {
+                    InstitutionName = e.School,
+                    Degree = e.Degree,
+                    StartDate = ParseDateOrNull(e.StartDate),
+                    EndDate = ParseDateOrNull(e.EndDate)
+                }).ToList(),
+
+                Experience = analysisResult.Experience.Select(e => new SaveExperianceDto
+                {
+                    CompanyName = e.Company,
+                    PositionTitle = e.Title,
+                    Description = "",
+                    StartDate = ParseDateOrNull(e.StartDate),
+                    EndDate = ParseDateOrNull(e.EndDate)
+                }).ToList()
+            };
+
+            var response = await Http.PostAsJsonAsync(
+                $"api/resume/{selectedResume.ResumeID}/analysis",
+                request
+            );
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                saveError = $"Save failed: {error}";
+                return;
+            }
+
+            saveSuccess = "Resume analysis saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            saveError = $"Error while saving: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+    private static DateTime? ParseDateOrNull(string? date)
+{
+  
+    
+    if (string.IsNullOrWhiteSpace(date))
+        return null;
+
+    if (DateTime.TryParseExact(
+        date,
+        "dd.MM.yyyy",
+        CultureInfo.InvariantCulture,
+        DateTimeStyles.None,
+        out var parsedDate))
+    {
+        return parsedDate;
+    }
+
+    return null;
+}
 }
