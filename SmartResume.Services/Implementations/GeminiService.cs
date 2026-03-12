@@ -12,6 +12,8 @@ public class GeminiService : IGeminiService
 
     public GeminiService(IConfiguration configuration)
     {
+        
+
         _apiKey = configuration["Gemini:ApiKey"]
            ?? throw new InvalidOperationException("Gemini ApiKey is missing");
 
@@ -19,7 +21,7 @@ public class GeminiService : IGeminiService
                   ?? throw new InvalidOperationException("Gemini Model is missing");
     }
 
-
+  
     public async Task<string> AnalyzeResumeAsync(string resumeText)
     {
         using var httpClient = new HttpClient();
@@ -35,10 +37,7 @@ Required output format:
 {
   ""firstName"": ""First name"",
   ""lastName"": ""Last name"",
-  ""email"": ""Email address"",
-  ""phone"": ""Phone number"",
   ""address"": ""Address"",
-  ""city"": ""City"",
   ""summary"": ""Short summary (2-3 sentences)"",
   ""skills"": [""Skill1"", ""Skill2"", ""Skill3""],
   ""languages"": [""Language1"", ""Language2""],
@@ -57,7 +56,13 @@ Required output format:
       ""startDate: ""dd.MM.yyyy"",
       ""endDate: ""dd.MM.yyyy""
     }
-  ]
+  ],
+  ""contactDetails"": {
+    ""email"": ""Email address"",
+    ""phone"": ""Phone number"",
+    ""country"": ""Country""
+    ""city"": ""City"",
+    } 
 }
 
 If any field cannot be found, return an empty string or an empty array. Preserve the original language of the CV content as is.

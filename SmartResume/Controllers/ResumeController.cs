@@ -23,6 +23,11 @@ namespace SmartCV.Controllers
 
         public ResumeController(ApplicationDbContext context, IWebHostEnvironment environment, IOcrService ocrService, IGeminiService geminiService)
         {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (environment == null) throw new ArgumentNullException(nameof(environment));
+            if (ocrService == null) throw new ArgumentNullException(nameof(ocrService));
+            if (geminiService == null) throw new ArgumentNullException(nameof(geminiService));
+
             _context = context;
             _environment = environment;
             _ocrService = ocrService;
@@ -30,6 +35,7 @@ namespace SmartCV.Controllers
         }
 
         [HttpPost("upload")]
+        [Authorize]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> UploadResume(IFormFile file)
         {
@@ -41,7 +47,14 @@ namespace SmartCV.Controllers
             if (string.IsNullOrEmpty(userIdClaim))
                 return Unauthorized("User ID not found.");
 
-            int userId = int.Parse(userIdClaim);
+            //int userId = int.Parse(userIdClaim);
+
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                Console.WriteLine($"User claim int dönüştürülemedi: {userIdClaim}");
+                return Unauthorized("Invalid user ID.");
+            }
+            Console.WriteLine($"UserID: {userId}");
 
             try
             {
@@ -50,6 +63,8 @@ namespace SmartCV.Controllers
 
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
+
+               
 
                 string uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
@@ -280,9 +295,23 @@ namespace SmartCV.Controllers
 
             await _context.Experiences.AddRangeAsync(experienceEntities);
 
+            // ----- CONTACT INFO -----
+
+            
+            var contactInfoEntities = new ContactDetail()
+            {
+                ResumeID = resume.ResumeID,
+                Email = request.ContactDetails.Email,
+                PhoneNumber = request.ContactDetails.Phone,
+                City = request.ContactDetails.City,
+                Country = request.ContactDetails.Country
+
+            };
+
+            await _context.ContactDetails.AddAsync(contactInfoEntities);
             // ----- METADATA -----
 
-            // resume.LastAnalyzedAt = DateTime.UtcNow;
+            resume.LastAnalyzedAt = DateTime.UtcNow;
             resume.UploadedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 

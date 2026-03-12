@@ -23,6 +23,8 @@ namespace SmartResume.Data
         // for the many-to-many relationship.
         public DbSet<ResumeSkill> ResumeSkills { get; set; }
 
+        public DbSet<ContactDetail> ContactDetails { get; set; }
+
 
         // --- Fluent API Configuration ---
         // This method is optional, but it's the best place to define complex configurations that can't be expressed with simple attributes.

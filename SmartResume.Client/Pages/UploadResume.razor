@@ -23,7 +23,6 @@
                                 <button class="btn btn-primary" @onclick="GoToLibrary">
                                     <i class="bi bi-collection-fill me-2"></i> Go to My Library
                                 </button>
-                                @* İsteğe bağlı: Tekrar yükleme yapmak isterse diye bir link *@
                                 <button class="btn btn-outline-secondary ms-2" @onclick="ResetForm">
                                     Upload Another
                                 </button>
@@ -111,6 +110,8 @@
                 return;
             }
 
+            token=  token.Replace("\"", "").Trim();
+
             using var content = new MultipartFormDataContent();
 
             var fileContent = new StreamContent(selectedFile.OpenReadStream(maxFileSize));
@@ -133,14 +134,17 @@
             }
             else
             {
-                message = $"Upload failed: {response.StatusCode} ({response.ReasonPhrase})";
+                var errorBody = await response.Content.ReadAsStringAsync();
+                message = $"Upload failed: {response.StatusCode}. Details: {errorBody}";
                 alertClass = "alert alert-danger";
+                Console.WriteLine($"Server Error: {errorBody}");
             }
         }
         catch (Exception ex)
         {
-            message = $"Error: {ex.Message}";
+            message = $"Connection Error: {ex.Message}";
             alertClass = "alert alert-danger";
+            Console.WriteLine($"EXCEPTION DETAYI: {ex}");
         }
         finally
         {

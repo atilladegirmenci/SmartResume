@@ -12,18 +12,52 @@ using SmartResume.Data;
 namespace SmartResume.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260205111120_InitialBaseline")]
-    partial class InitialBaseline
+    [Migration("20260307134837_AddContactDetailTable")]
+    partial class AddContactDetailTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.10")
+                .HasAnnotation("ProductVersion", "9.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("SmartResume.Data.Models.ContactDetail", b =>
+                {
+                    b.Property<int>("ContactDetailID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ContactDetailID"));
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ResumeID")
+                        .HasColumnType("int");
+
+                    b.HasKey("ContactDetailID");
+
+                    b.HasIndex("ResumeID");
+
+                    b.ToTable("ContactDetails");
+                });
 
             modelBuilder.Entity("SmartResume.Data.Models.Education", b =>
                 {
@@ -219,6 +253,17 @@ namespace SmartResume.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("SmartResume.Data.Models.ContactDetail", b =>
+                {
+                    b.HasOne("SmartResume.Data.Models.Resume", "Resume")
+                        .WithMany()
+                        .HasForeignKey("ResumeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resume");
+                });
+
             modelBuilder.Entity("SmartResume.Data.Models.Education", b =>
                 {
                     b.HasOne("SmartResume.Data.Models.Resume", "Resume")
@@ -263,7 +308,7 @@ namespace SmartResume.Migrations
                     b.HasOne("SmartResume.Data.Models.Skill", "Skill")
                         .WithMany("ResumeSkills")
                         .HasForeignKey("SkillID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Resume");

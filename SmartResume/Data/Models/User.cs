@@ -9,7 +9,7 @@ namespace SmartResume.Data.Models
         public int UserID { get; set; }
 
         [Required(ErrorMessage = "email is required")] 
-        [EmailAddress(ErrorMessage = "Please enter a valid email address")] // E-posta formatında olmasını zorunlu kılar
+        [EmailAddress(ErrorMessage = "Please enter a valid email address")] 
         [StringLength(255)]
         public string Email { get; set; }
 
@@ -24,9 +24,8 @@ namespace SmartResume.Data.Models
         [StringLength(100)]
         public string LastName { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Otomatik olarak oluşturma tarihini atar
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; 
 
-        // İlişki: Bir kullanıcının birden fazla CV'si olabilir, ilk başta bu liste boş olacak kullanıcı cv yükledikçe dolacak
         public virtual ICollection<Resume> Resumes { get; set; } = new List<Resume>();
     }
 }
