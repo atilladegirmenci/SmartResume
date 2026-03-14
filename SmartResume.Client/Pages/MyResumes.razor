@@ -6,6 +6,7 @@
 @using Blazored.LocalStorage;
 @using System.Globalization;
 
+
 @inject HttpClient Http
 @inject ILocalStorageService localStorage
 @inject NavigationManager Navigation
@@ -18,11 +19,6 @@
 
         @* --- LEFT COLUMN: LIST OF RESUMES --- *@
 <div class="col-md-3">
-    @* 1. position: sticky -> Ekranı kaydırınca sabit kalır.
-       2. max-height: 85vh -> Boyutu EN FAZLA ekranın %85'i kadar olur. 
-          (Liste kısaysa küçülür, uzunsan buraya kadar büyür).
-       3. display: flex & flex-column -> İçeriği alt alta dizer.
-    *@
     <div class="card shadow-sm border-0 bg-light" 
          style="position: sticky; top: 1.5rem; max-height: 85vh; display: flex; flex-direction: column;">
         
@@ -109,13 +105,13 @@
                         
                         @* --- Dosya Adı ve Butonlar (Üst Kısım) --- *@
                         <div class="d-flex flex-wrap justify-content-center align-items-center mb-3 gap-3">
-                            
+
                             @* --- ACTION BUTTONS (PDF'in Üstüne Taşındı) --- *@
                             <div class="btn-group shadow-sm">
                                <button class="btn btn-primary" @onclick="DownloadPdf">
                                     <i class="bi bi-download me-1"></i> Download
                                </button>
-                                
+
                                <button class="btn btn-warning text-white" @onclick="AnalyzeResume" disabled="@isAnalyzing">
             @if (isAnalyzing)
             {
@@ -127,12 +123,85 @@
                 <i class="bi bi-magic me-1"></i> <span> Analyze AI</span>
             }
         </button>
-                                
+
                                 <button class="btn btn-danger" @onclick="DeleteResume">
             <i class="bi bi-trash me-1"></i> Delete
         </button>
                             </div>
+
+                            @* --- GET JOBS BUTTON (NEW) --- *@
+                            <button class="btn btn-success shadow-sm" 
+                                    @onclick="GetJobRecommendations" 
+                                    disabled="@(isGettingJobs || !selectedResume.IsAnalyzed)">
+                                @if (isGettingJobs)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                    <span>Loading Jobs...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-briefcase-fill me-1"></i>
+                                    <span>Get Jobs</span>
+                                }
+                            </button>
+
+                            @* --- Warning if not analyzed --- *@
+                            @if (!selectedResume.IsAnalyzed)
+                            {
+                                <small class="text-warning">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Analyze CV first to get jobs
+                                </small>
+                            }
                         </div>
+
+                        @* --- JOB ERROR MESSAGE (if any) --- *@
+                        @if (jobError != null)
+                        {
+                            <div class="alert alert-warning" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>@jobError
+                            </div>
+                        }
+
+                       @if (jobRecommendations.Count > 0)
+{
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-success text-white">
+            <h6 class="mb-0">
+                <i class="bi bi-briefcase-fill me-2"></i>Job Recommendations (@jobRecommendations.Count)
+            </h6>
+        </div>
+        <div class="card-body p-2" style="max-height: 360px; overflow-y: auto;">
+            <div class="d-grid gap-2">
+                @foreach (var job in jobRecommendations)
+                {
+                    <div class="border rounded p-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <strong class="text-dark">@job.Title</strong>
+                            @if (!string.IsNullOrWhiteSpace(job.Link))
+                            {
+                                <a class="btn btn-sm btn-outline-primary" href="@job.Link" target="_blank" rel="noopener">Open</a>
+                            }
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-geo-alt me-1"></i>@job.Location
+                            @if (!string.IsNullOrWhiteSpace(job.Source))
+                            {
+                                <span class="ms-2"><i class="bi bi-building me-1"></i>@job.Source</span>
+                            }
+                        </small>
+                        
+                        @if (!string.IsNullOrWhiteSpace(job.Snippet))
+                        {
+                            <p class="mb-0 mt-2 small text-secondary">
+                                @((MarkupString)FormatJobSnippet(job.Snippet))
+                            </p>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 
                         @* --- PDF PREVIEW ALANI --- *@
                         <div class="border rounded bg-light d-flex justify-content-center align-items-center mb-3 shadow-sm" 
@@ -307,6 +376,9 @@
     private string editableSkills = "";
     private string editableLanguages = "";
     private string? pdfBlobUrl;
+    private bool isGettingJobs = false;
+    private string? jobError;
+    private List<JobListingModel> jobRecommendations = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -340,6 +412,8 @@
         selectedResume = resume;
         analysisResult = null;
         analysisError = null;
+        jobError = null;
+        jobRecommendations.Clear();
 
         await LoadPdfPreview(resume.ResumeID);
     }
@@ -433,6 +507,8 @@
             {
                 analysisResult = await response.Content.ReadFromJsonAsync<ResumeAnalysisModel>();
 
+                MarkSelectedResumeAsAnalyzed();
+
                 // Populate the textareas from the list
                 if (analysisResult != null)
                 {
@@ -519,6 +595,7 @@
                 return;
             }
 
+            MarkSelectedResumeAsAnalyzed();
             saveSuccess = "Resume analysis saved successfully.";
         }
         catch (Exception ex)
@@ -531,22 +608,96 @@
         }
     }
     private static DateTime? ParseDateOrNull(string? date)
-{
-  
-    
-    if (string.IsNullOrWhiteSpace(date))
-        return null;
-
-    if (DateTime.TryParseExact(
-        date,
-        "dd.MM.yyyy",
-        CultureInfo.InvariantCulture,
-        DateTimeStyles.None,
-        out var parsedDate))
     {
-        return parsedDate;
+        if (string.IsNullOrWhiteSpace(date))
+            return null;
+
+        if (DateTime.TryParseExact(
+            date,
+            "dd.MM.yyyy",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsedDate))
+        {
+            return parsedDate;
+        }
+
+        return null;
     }
 
-    return null;
-}
+    private void MarkSelectedResumeAsAnalyzed()
+    {
+        if (selectedResume == null)
+            return;
+
+        selectedResume.IsAnalyzed = true;
+
+        var resumeInList = resumes.FirstOrDefault(r => r.ResumeID == selectedResume.ResumeID);
+        if (resumeInList != null)
+        {
+            resumeInList.IsAnalyzed = true;
+        }
+    }
+
+    private async Task GetJobRecommendations()
+    {
+        if (selectedResume == null) return;
+
+        isGettingJobs = true;
+        jobError = null;
+
+        try
+        {
+            Console.WriteLine($"🔍 Fetching job recommendations for Resume ID: {selectedResume.ResumeID}");
+
+            var response = await Http.GetAsync($"api/resume/{selectedResume.ResumeID}/job-recommendations");
+
+            if (response.IsSuccessStatusCode)
+            {
+                jobRecommendations = await response.Content.ReadFromJsonAsync<List<JobListingModel>>() ?? new List<JobListingModel>();
+                Console.WriteLine("✅ Job recommendations received:");
+                Console.WriteLine($"Count: {jobRecommendations.Count}");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                jobError = error;
+                jobRecommendations.Clear();
+                Console.WriteLine($"❌ Failed to get job recommendations: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            jobError = $"Error: {ex.Message}";
+            jobRecommendations.Clear();
+            Console.WriteLine($"❌ Error calling job service: {ex.Message}");
+        }
+        finally
+        {
+            isGettingJobs = false;
+        }
+    }
+    private string FormatJobSnippet(string snippet)
+    {
+       if (string.IsNullOrWhiteSpace(snippet))
+        {
+            return string.Empty;
+        }
+
+        // 1. HTML boşluklarını normal boşluğa çevir
+        var cleaned = snippet.Replace("&nbsp;", " ");
+
+        // 2. Yan yana gelmiş birden fazla boşluğu TEK bir boşluğa indir (Örn: "•            SQL" -> "• SQL")
+        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"[ ]{2,}", " ");
+
+        // 3. Tekrarlayan üç noktaları ve etrafındaki boşlukları TEK bir " ... " haline getir (Örn: "... ... ... " -> " ... ")
+        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"(?:\s*\.\.\.\s*)+", " ... ");
+
+        // 4. Madde işaretlerini bir alt satıra alarak düzgün bir liste görünümü ver
+        cleaned = cleaned.Replace("●", "<br />&bull; ")
+                         .Replace("•", "<br />&bull; ");
+
+        // 5. En başta veya en sonda kalan gereksiz boşlukları temizle
+        return cleaned.Trim();
+    }
 }

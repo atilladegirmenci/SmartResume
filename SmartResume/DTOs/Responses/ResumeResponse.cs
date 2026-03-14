@@ -8,5 +8,6 @@ namespace SmartResume.DTOs.Responses
         public string UserGivenTitle { get; set; } // e.g. "Myfile.pdf"
         public string OriginalFileName { get; set; }
         public DateTime UploadedAt { get; set; }
+        public bool IsAnalyzed { get; set; }
     }
 }

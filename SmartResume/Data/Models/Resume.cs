@@ -26,6 +26,7 @@ namespace SmartResume.Data.Models
         public string? AnalysisResult { get; set; }
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastAnalyzedAt { get; set; } // To track when it was last processed by an ML model
+        public bool IsAnalyzed { get; set; } = false;
 
         // The User who owns this Resume
         [ForeignKey("UserID")]

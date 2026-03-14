@@ -6,5 +6,6 @@
         public string UserGivenTitle { get; set; } = string.Empty;
         public string OriginalFileName { get; set; } = string.Empty;
         public DateTime UploadedAt { get; set; }
+        public bool IsAnalyzed { get; set; }
     }
 }

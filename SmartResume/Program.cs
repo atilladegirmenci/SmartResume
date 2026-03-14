@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SmartResume.Data;
+using SmartResume.AppServices;
 using SmartResume.Services.Interfaces;
 using System.Text;
 
@@ -53,6 +54,9 @@ builder.Services
 
 builder.Services.AddScoped<IOcrService, OcrService>();
 builder.Services.AddScoped<IGeminiService, GeminiService>();
+builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddScoped<IJobAppService, JobAppService>();
+builder.Services.AddScoped<IResumeAppService, ResumeAppService>();
 
 var app = builder.Build();
 
