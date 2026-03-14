@@ -120,7 +120,6 @@ namespace SmartResume.AppServices
             string analysisJson = await _geminiService.AnalyzeResumeAsync(rawText);
             resume.AnalysisResult = analysisJson;
             resume.LastAnalyzedAt = DateTime.UtcNow;
-            resume.IsAnalyzed = true;
 
             // 3. Kaydet
             _context.Resumes.Update(resume);
