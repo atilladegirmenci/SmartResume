@@ -15,6 +15,9 @@ namespace SmartResume.Data.Models
         [Required]
         public int SkillID { get; set; } // Foreign key to Skill
 
+        [Required]
+        public int Importance { get; set; } // 1 = most important skill for this resume
+
         // --- Navigation Properties ---
 
         [ForeignKey("ResumeID")]

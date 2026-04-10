@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SmartResume.Services.Interfaces;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 
@@ -64,9 +65,10 @@ Required output format:
     ""city"": ""City"",
     } 
 }
-
-If any field cannot be found, return an empty string or an empty array. Preserve the original language of the CV content as is.
-Date rules:
+Rules for extraction:
+1. If any field cannot be found, return an empty string or an empty array. Preserve the original language of the CV content as is.
+2. SKILLS SORTING: Analyze the resume text and organize the ""skills"" array from HIGH to LOW importance. Consider the relevance of the skills to the candidate's core experience, projects and education, as well as their frequency in the resume text. The most critical technical or professional skills must be at the top of the array.
+3. Date rules:
 - Use format ""dd.MM.yyyy"".
 - If only the year is available, use ""01.01.YYYY"".
 - If month and year are available but day is missing, use ""01.MM.YYYY"".
@@ -85,13 +87,33 @@ CV Text:
 
         try
         {
-            var response = await httpClient.PostAsync(requestUrl, content);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            const int maxRetryCount = 3;
+            HttpResponseMessage? response = null;
+            string responseBody = string.Empty;
 
-            if (!response.IsSuccessStatusCode)
+            for (int attempt = 1; attempt <= maxRetryCount; attempt++)
             {
-                // Hata durumunda detaylı mesaj fırlatıyoruz
-                throw new Exception($"Gemini API Hatası ({response.StatusCode}): {responseBody}");
+                response = await httpClient.PostAsync(requestUrl, content);
+                responseBody = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    break;
+                }
+
+                if (response.StatusCode == HttpStatusCode.ServiceUnavailable && attempt < maxRetryCount)
+                {
+                    Console.WriteLine($"[GeminiService] 503 high demand detected. Retrying in 1 second... (Attempt {attempt}/{maxRetryCount})");
+                    await Task.Delay(1000);
+                    continue;
+                }
+
+                throw new Exception($"Gemini API Error: ({response.StatusCode}): {responseBody}");
+            }
+
+            if (response == null || !response.IsSuccessStatusCode)
+            {
+                throw new Exception($"Gemini API Error: ({response?.StatusCode}): {responseBody}");
             }
 
             using var doc = JsonDocument.Parse(responseBody);

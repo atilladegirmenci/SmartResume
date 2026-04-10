@@ -175,14 +175,23 @@ namespace SmartResume.AppServices
 
             _context.Skills.AddRange(newSkills);
 
-            var allSkills = existingSkills.Concat(newSkills).ToList();
+            var skillsByName = existingSkills
+                .Concat(newSkills)
+                .ToDictionary(s => s.SkillName, s => s);
 
-            foreach (var skill in allSkills)
+            for (int i = 0; i < normalizedSkills.Count; i++)
             {
+                var skillName = normalizedSkills[i];
+                if (!skillsByName.TryGetValue(skillName, out var skill))
+                {
+                    continue;
+                }
+
                 resume.ResumeSkills.Add(new ResumeSkill
                 {
                     ResumeID = resume.ResumeID,
-                    Skill = skill
+                    Skill = skill,
+                    Importance = i + 1
                 });
             }
 

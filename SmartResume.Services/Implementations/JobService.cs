@@ -25,12 +25,17 @@ using SmartResume.Services.Interfaces;
         {
             var requestUrl = $"https://tr.jooble.org/api/{_apiKey}";
 
+            Console.WriteLine($"[JobService] Keywords sent to Jooble: {string.Join(", ", keywords)}");
+            Console.WriteLine($"[JobService] Location sent to Jooble: {location}");
+
             var requestBody = new
             {
                 keywords = string.Join(" ", keywords),
                 location = location,
                 page = "1"
             };
+
+            Console.WriteLine($"[JobService] Request payload keywords text: {requestBody.keywords}");
 
             var jsonContent = JsonContent.Create(requestBody);
             var response = await _httpClient.PostAsync(requestUrl, jsonContent);
