@@ -18,6 +18,9 @@ namespace SmartResume.Data.Models
         [Required]
         public int Importance { get; set; } // 1 = most important skill for this resume
 
+        [Required]
+        public bool IsSelectedForSearch { get; set; }
+
         // --- Navigation Properties ---
 
         [ForeignKey("ResumeID")]

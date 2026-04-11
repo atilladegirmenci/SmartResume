@@ -51,13 +51,10 @@ namespace SmartResume.AppServices
             // Get skills from ResumeSkills table
             var skills = await _context.ResumeSkills
                 .Where(rs => rs.ResumeID == resumeId)
-                .Select(rs => new { rs.Importance, SkillName = rs.Skill.SkillName })
-                .Where(x => !string.IsNullOrWhiteSpace(x.SkillName))
-                .GroupBy(x => x.SkillName)
-                .Select(g => new { SkillName = g.Key, Importance = g.Min(x => x.Importance) })
-                .OrderBy(x => x.Importance)
-                .Take(3)
-                .Select(x => x.SkillName)
+                .Where(rs => rs.IsSelectedForSearch)
+                .Select(rs => rs.Skill.SkillName)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
                 .ToListAsync();
 
             // Get position titles from experiences table

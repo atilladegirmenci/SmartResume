@@ -19,7 +19,7 @@ public class OcrService : IOcrService
 
     public string ExtractTextFromPdf(byte[] pdfBytes)
     {
-        using var engine = new TesseractEngine(_tessDataPath, "eng", EngineMode.LstmOnly);
+        using var engine = new TesseractEngine(_tessDataPath, "eng+tur", EngineMode.LstmOnly);
         engine.SetVariable("preserve_interword_spaces", "1");
         engine.DefaultPageSegMode = PageSegMode.Auto;
 

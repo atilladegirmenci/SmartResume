@@ -34,6 +34,9 @@ namespace SmartResume.Client.Auth
 
         public void MarkUserAsAuthenticated(string token)
         {
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("bearer", token);
+
             var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt"));
             var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
             NotifyAuthenticationStateChanged(authState);
@@ -41,6 +44,8 @@ namespace SmartResume.Client.Auth
 
         public void MarkUserAsLoggedOut()
         {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+
             var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
             var authState = Task.FromResult(new AuthenticationState(anonymousUser));
             NotifyAuthenticationStateChanged(authState);

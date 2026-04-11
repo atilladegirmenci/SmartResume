@@ -1,5 +1,6 @@
 ﻿@page "/my-resumes"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@implements IAsyncDisposable
 
 @using SmartResume.Client.Models.Resume;
 @using System.Net.Http.Headers;
@@ -64,7 +65,7 @@
                                     
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <h6 class="mb-0 text-truncate fw-semibold text-dark" style="max-width: 90%;">
-                                            @resume.OriginalFileName
+                                            @FormatResumeTitle(resume.UserGivenTitle)
                                         </h6>
                                     </div>
                                     
@@ -92,11 +93,42 @@
             {
                 <div class="card shadow-sm h-100 border-0 bg-transparent same-height-panel">
                     <div class="card-header bg-white shadow-sm rounded mb-3 d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0 text-dark">@selectedResume.UserGivenTitle</h4>
+                        <div class="d-flex align-items-center gap-2 flex-grow-1">
+                            @if (isEditingTitle)
+                            {
+                                <div class="input-group" style="max-width: 520px;">
+                                    <input class="form-control" @bind="editableTitle" />
+                                    <button class="btn btn-success" type="button" @onclick="SaveResumeTitle" disabled="@isUpdatingTitle">
+                                        @if (isUpdatingTitle)
+                                        {
+                                            <span class="spinner-border spinner-border-sm"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-check-lg"></i>
+                                        }
+                                    </button>
+                                    <button class="btn btn-outline-secondary" type="button" @onclick="CancelEditTitle" disabled="@isUpdatingTitle">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <h4 class="mb-0 text-dark">@FormatResumeTitle(selectedResume.UserGivenTitle)</h4>
+                                <button class="btn btn-sm btn-link text-warning p-0" type="button" title="Edit title" @onclick="StartEditTitle">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </button>
+                            }
+                        </div>
                         <small class="text-muted">
                             <i class="bi bi-calendar3 me-1"></i> Uploaded: @selectedResume.UploadedAt.ToString("g")
                         </small>
                     </div>
+                    @if (!string.IsNullOrWhiteSpace(titleError))
+                    {
+                        <div class="alert alert-warning py-2 px-3 mb-3">@titleError</div>
+                    }
                     
                     <div class="card-body p-0 d-flex flex-column">
                         
@@ -134,7 +166,7 @@
                             @* --- GET JOBS BUTTON --- *@
                             <button class="btn btn-success shadow-sm" 
                                     @onclick="GetJobRecommendations" 
-                                    disabled="@(isGettingJobs || !selectedResume.IsAnalyzed)">
+                                    disabled="@(isGettingJobs || !selectedResume.IsAnalyzed || activeRightPanel == RightPanelView.Analysis || isSaving)">
                                 @if (isGettingJobs)
                                 {
                                     <span class="spinner-border spinner-border-sm me-1"></span>
@@ -144,6 +176,21 @@
                                 {
                                     <i class="bi bi-briefcase-fill me-1"></i>
                                     <span>Get Jobs</span>
+                                }
+                            </button>
+                            @* --- EDIT ANALYZE RESULT BUTTON*@
+                            <button class="btn btn-outline-secondary shadow-sm"
+                                    @onclick="LoadSavedAnalysisResult"
+                                    disabled="@(isLoadingSavedAnalysis || !selectedResume.IsAnalyzed)">
+                                @if (isLoadingSavedAnalysis)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                    <span>Loading Analysis...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-sliders me-1"></i>
+                                    <span>Edit Saved Analysis</span>
                                 }
                             </button>
 
@@ -169,8 +216,15 @@
 
                         @* --- PDF PREVIEW AREA (Fixed Width for A4 ratio) --- *@
                         <div class="flex-grow-1 w-100 d-flex justify-content-center">
-                            <div class="bg-light shadow-sm rounded border" 
-                                 style="width: 100%; max-width: 850px; height: 100%; min-height: 0; overflow: hidden;">
+                            <div class="bg-light shadow-sm rounded border pdf-preview-frame preview-container @(activeRightPanel == RightPanelView.None ? "pdf-preview-wide" : "pdf-preview-narrow")" 
+                                 style="height: 100%; min-height: 0; overflow: hidden;">
+                                @if (isAnalyzing)
+                                {
+                                    <div class="analyze-overlay">
+                                        <div class="analyze-overlay-text">AI is analyzing your CV...</div>
+                                    </div>
+                                }
+
                                 @if (!string.IsNullOrEmpty(pdfBlobUrl))
                                 {
                                     <iframe src="@pdfBlobUrl" style="width:100%; height:100%; min-height: 0; border:none;"></iframe>
@@ -234,19 +288,104 @@
                                     <input type="text" class="form-control" @bind-value="analysisResult.ContactDetails.Country" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small mb-1">City</label>
+                                    <label class="form-label text-muted small mb-1 d-inline-flex align-items-center gap-1">
+                                        <span>City</span>
+                                        <span class="info-icon" title="Job recommendations are prioritized around this location.">
+                                            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                                                <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                                                <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line>
+                                                <circle cx="8" cy="4.5" r="1" fill="currentColor"></circle>
+                                            </svg>
+                                        </span>
+                                    </label>
                                     <input type="text" class="form-control" @bind-value="analysisResult.ContactDetails.City" />
                                 </div>
                             </div>
 
                             <h6 class="text-secondary border-bottom pb-2 mt-2 fw-bold">Summary</h6>
-                            <textarea class="form-control mb-4" rows="4" @bind="analysisResult.Summary"></textarea>
+                            <textarea class="form-control mb-4 summary-textarea" rows="6" @bind="analysisResult.Summary"></textarea>
 
-                            <h6 class="text-secondary border-bottom pb-2 fw-bold">Skills</h6>
-                            <textarea class="form-control mb-4" rows="3" @bind="editableSkills"></textarea>
+                            <h6 class="text-secondary border-bottom pb-2 fw-bold d-flex align-items-center gap-2">
+                                <span>Skills</span>
+                                <span class="info-icon" title="Personalizing your selected skills helps the system return more relevant job matches.">
+                                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                                        <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                                        <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line>
+                                        <circle cx="8" cy="4.5" r="1" fill="currentColor"></circle>
+                                    </svg>
+                                </span>
+                            </h6>
+                            @if (editableSkillList.Count > 0)
+                            {
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    @for (int i = 0; i < editableSkillList.Count; i++)
+                                    {
+                                        var skillIndex = i;
+                                        @if (editingSkillIndex == skillIndex)
+                                        {
+                                            <div class="d-inline-flex align-items-center border rounded-pill bg-white px-2 py-1">
+                                                <input class="form-control form-control-sm border-0" style="width: 170px;"
+                                                       @bind="editingSkillText" />
+                                                <button type="button" class="btn btn-sm btn-link text-success p-1" title="Save"
+                                                        @onclick="SaveEditSkill">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-link text-secondary p-1" title="Cancel"
+                                                        @onclick="CancelEditSkill">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="skill-pill @(selectedSkillsForSearch.Contains(editableSkillList[skillIndex]) ? "skill-pill-selected" : "skill-pill-unselected")">
+                                                <span role="button" class="skill-pill-main" @onclick="() => ToggleSkillSelection(editableSkillList[skillIndex])">
+                                                    @if (selectedSkillsForSearch.Contains(editableSkillList[skillIndex]))
+                                                    {
+                                                        <span class="fw-bold">✓</span>
+                                                    }
+                                                    <span>@editableSkillList[skillIndex]</span>
+                                                </span>
+
+                                                <button type="button" class="btn btn-sm skill-action-btn skill-action-edit" title="Edit skill"
+                                                        @onclick="() => StartEditSkill(skillIndex)">
+                                                    <i class="bi bi-pencil-fill"></i>
+                                                </button>
+
+                                                <button type="button" class="btn btn-sm skill-action-btn skill-action-remove" title="Remove skill"
+                                                        @onclick="() => RemoveSkillAt(skillIndex)">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted small mb-3">No skills found.</div>
+                            }
+                            <div class="input-group mb-4">
+                                <input class="form-control" placeholder="Add new skill" @bind="newSkillText" />
+                                <button type="button" class="btn btn-outline-primary" @onclick="AddSkill">
+                                    <i class="bi bi-plus-lg me-1"></i>Add
+                                </button>
+                            </div>
 
                             <h6 class="text-secondary border-bottom pb-2 fw-bold">Languages</h6>
-                            <textarea class="form-control mb-4" rows="2" @bind="editableLanguages"></textarea>
+                            @if (analysisResult.Languages != null && analysisResult.Languages.Count > 0)
+                            {
+                                <div class="d-flex flex-wrap gap-2 mb-4">
+                                    @foreach (var lang in analysisResult.Languages.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        <span class="badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 fs-6">@lang</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted small mb-4">No languages found.</div>
+                            }
 
                             <h6 class="text-secondary border-bottom pb-2 fw-bold">Experience</h6>
                             @if (analysisResult.Experience != null)
@@ -386,6 +525,122 @@
     .same-height-panel {
         height: calc(100vh - 6rem);
     }
+
+    .pdf-preview-frame {
+        width: 100%;
+    }
+
+    .pdf-preview-wide {
+        max-width: 720px;
+    }
+
+    .pdf-preview-narrow {
+        max-width: 580px;
+    }
+
+    .preview-container {
+        position: relative;
+    }
+
+    .analyze-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(120deg, rgba(255,0,128,.28), rgba(0,180,255,.28), rgba(120,255,0,.28), rgba(255,200,0,.28), rgba(180,0,255,.28));
+        background-size: 300% 300%;
+        animation: aiGradientFlow 4s ease infinite;
+        backdrop-filter: blur(0.5px);
+    }
+
+    .analyze-overlay-text {
+        color: #fff;
+        font-weight: 700;
+        letter-spacing: .3px;
+        text-shadow: 0 2px 8px rgba(0,0,0,.35);
+        background: rgba(0,0,0,.25);
+        padding: .6rem 1rem;
+        border-radius: 999px;
+    }
+
+    @@keyframes aiGradientFlow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    .skill-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        border-radius: 999px;
+        border: 1px solid #dbe2ea;
+        padding: .35rem .45rem .35rem .8rem;
+    }
+
+    .skill-pill-main {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .skill-pill-selected {
+        background: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+    }
+
+    .skill-pill-unselected {
+        background: #fff;
+        color: #212529;
+    }
+
+    .skill-action-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        background: transparent;
+        transition: all .15s ease-in-out;
+        padding: 0;
+    }
+
+    .skill-action-edit {
+        color: #f4b400;
+    }
+
+    .skill-action-edit:hover {
+        background: #fff6db;
+        border-color: #ffe08a;
+    }
+
+    .skill-action-remove {
+        color: #dc3545;
+    }
+
+    .skill-action-remove:hover {
+        background: #ffecef;
+        border-color: #ffc2c9;
+    }
+
+    .summary-textarea {
+        overflow-y: hidden;
+        resize: vertical;
+    }
+
+    .info-icon {
+        color: #212529;
+        display: inline-flex;
+        align-items: center;
+        cursor: help;
+    }
 </style>
 
 @code {
@@ -405,11 +660,19 @@
     private string? saveError;
     private string? saveSuccess;
     
-    private string editableSkills = "";
-    private string editableLanguages = "";
+    private List<string> editableSkillList = new();
+    private HashSet<string> selectedSkillsForSearch = new(StringComparer.OrdinalIgnoreCase);
+    private string newSkillText = "";
+    private int? editingSkillIndex;
+    private string editingSkillText = "";
+    private bool isEditingTitle = false;
+    private bool isUpdatingTitle = false;
+    private string editableTitle = string.Empty;
+    private string? titleError;
     private string? pdfBlobUrl;
     
     private bool isGettingJobs = false;
+    private bool isLoadingSavedAnalysis = false;
     private string? jobError;
     private List<JobListingModel> jobRecommendations = new();
 
@@ -424,11 +687,28 @@
         try
         {
             var token = await localStorage.GetItemAsync<string>("authToken");
-            if (!string.IsNullOrEmpty(token))
+
+            if (string.IsNullOrWhiteSpace(token))
             {
-                Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                resumes = new List<ResumeResponseModel>();
+                Navigation.NavigateTo("/login", forceLoad: false);
+                return;
             }
-            resumes = await Http.GetFromJsonAsync<List<ResumeResponseModel>>("api/resume") ?? new List<ResumeResponseModel>();
+
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.GetAsync("api/resume");
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                await localStorage.RemoveItemAsync("authToken");
+                Http.DefaultRequestHeaders.Authorization = null;
+                resumes = new List<ResumeResponseModel>();
+                Navigation.NavigateTo("/login", forceLoad: false);
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            resumes = await response.Content.ReadFromJsonAsync<List<ResumeResponseModel>>() ?? new List<ResumeResponseModel>();
         }
         catch (Exception ex)
         {
@@ -440,15 +720,73 @@
         }
     }
 
+    private async Task LoadSavedAnalysisResult()
+    {
+        if (selectedResume == null || !selectedResume.IsAnalyzed)
+            return;
+
+        isLoadingSavedAnalysis = true;
+        analysisError = null;
+
+        try
+        {
+            var response = await Http.GetAsync($"api/resume/{selectedResume.ResumeID}/analysis-result");
+
+            if (response.IsSuccessStatusCode)
+            {
+                analysisResult = await response.Content.ReadFromJsonAsync<ResumeAnalysisModel>();
+                if (analysisResult != null)
+                {
+                    editableSkillList = (analysisResult.Skills ?? new List<string>())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Select(s => s.Trim())
+                        .ToList();
+
+                    selectedSkillsForSearch = (analysisResult.SelectedSkills ?? new List<string>())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Select(s => s.Trim())
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                    if (selectedSkillsForSearch.Count == 0)
+                    {
+                        foreach (var skill in editableSkillList.Take(3))
+                        {
+                            selectedSkillsForSearch.Add(skill);
+                        }
+                    }
+
+                    activeRightPanel = RightPanelView.Analysis;
+                }
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                analysisError = $"Could not load saved analysis: {errorMsg}";
+            }
+        }
+        catch (Exception ex)
+        {
+            analysisError = $"Error while loading saved analysis: {ex.Message}";
+        }
+        finally
+        {
+            isLoadingSavedAnalysis = false;
+        }
+    }
+
     private async Task SelectResume(ResumeResponseModel resume)
     {
         selectedResume = resume;
+        editableTitle = FormatResumeTitle(resume.UserGivenTitle);
+        isEditingTitle = false;
+        titleError = null;
         
         // Reset states
         analysisResult = null;
         analysisError = null;
         jobError = null;
         jobRecommendations.Clear();
+        selectedSkillsForSearch.Clear();
         saveSuccess = null;
         saveError = null;
         
@@ -466,6 +804,60 @@
     private void CloseRightPanel()
     {
         activeRightPanel = RightPanelView.None;
+    }
+
+    private void StartEditTitle()
+    {
+        if (selectedResume == null) return;
+        editableTitle = FormatResumeTitle(selectedResume.UserGivenTitle);
+        titleError = null;
+        isEditingTitle = true;
+    }
+
+    private void CancelEditTitle()
+    {
+        if (selectedResume != null)
+        {
+            editableTitle = FormatResumeTitle(selectedResume.UserGivenTitle);
+        }
+        titleError = null;
+        isEditingTitle = false;
+    }
+
+    private async Task SaveResumeTitle()
+    {
+        if (selectedResume == null) return;
+
+        isUpdatingTitle = true;
+        titleError = null;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/resume/{selectedResume.ResumeID}/title", new { UserGivenTitle = editableTitle });
+            if (!response.IsSuccessStatusCode)
+            {
+                titleError = await response.Content.ReadAsStringAsync();
+                return;
+            }
+
+            var newTitle = (editableTitle ?? string.Empty).Trim();
+            selectedResume.UserGivenTitle = newTitle;
+            var resumeInList = resumes.FirstOrDefault(r => r.ResumeID == selectedResume.ResumeID);
+            if (resumeInList != null)
+            {
+                resumeInList.UserGivenTitle = newTitle;
+            }
+
+            isEditingTitle = false;
+        }
+        catch (Exception ex)
+        {
+            titleError = $"Could not update title: {ex.Message}";
+        }
+        finally
+        {
+            isUpdatingTitle = false;
+        }
     }
 
     private async Task LoadPdfPreview(int resumeId)
@@ -560,8 +952,15 @@
 
                 if (analysisResult != null)
                 {
-                    editableSkills = string.Join(", ", analysisResult.Skills ?? new List<string>());
-                    editableLanguages = string.Join(", ", analysisResult.Languages ?? new List<string>());
+                    editableSkillList = (analysisResult.Skills ?? new List<string>())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Select(s => s.Trim())
+                        .ToList();
+
+                    selectedSkillsForSearch = editableSkillList
+                        .Take(3)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
                 }
             }
             else
@@ -590,15 +989,16 @@
 
         try
         {
-            var finalSkills = editableSkills.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                            .Select(s => s.Trim()).ToList();
-
-            var finalLangs = editableLanguages.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                              .Select(s => s.Trim()).ToList();
+            var finalSkills = editableSkillList
+                                .Where(s => !string.IsNullOrWhiteSpace(s))
+                                .Select(s => s.Trim())
+                                .Distinct(StringComparer.OrdinalIgnoreCase)
+                                .ToList();
 
             var request = new SaveResumeAnalysisRequest
             {
                 Skills = finalSkills,
+                SelectedSkills = finalSkills.Where(s => selectedSkillsForSearch.Contains(s)).ToList(),
                 Education = analysisResult.Education.Select(e => new SaveEducationDto
                 {
                     InstitutionName = e.School,
@@ -721,5 +1121,90 @@
         cleaned = cleaned.Replace("●", "<br />&bull; ").Replace("•", "<br />&bull; ");
 
         return cleaned.Trim();
+    }
+
+    private void AddSkill()
+    {
+        var skill = (newSkillText ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(skill))
+            return;
+
+        editableSkillList.Add(skill);
+        selectedSkillsForSearch.Add(skill);
+        newSkillText = string.Empty;
+        editingSkillIndex = null;
+        editingSkillText = string.Empty;
+    }
+
+    private void RemoveSkillAt(int index)
+    {
+        if (index < 0 || index >= editableSkillList.Count)
+            return;
+
+        var removedSkill = editableSkillList[index];
+        editableSkillList.RemoveAt(index);
+        selectedSkillsForSearch.RemoveWhere(s => string.Equals(s, removedSkill, StringComparison.OrdinalIgnoreCase));
+
+        if (editingSkillIndex == index)
+        {
+            editingSkillIndex = null;
+            editingSkillText = string.Empty;
+        }
+        else if (editingSkillIndex.HasValue && editingSkillIndex.Value > index)
+        {
+            editingSkillIndex--;
+        }
+    }
+
+    private void StartEditSkill(int index)
+    {
+        if (index < 0 || index >= editableSkillList.Count)
+            return;
+
+        editingSkillIndex = index;
+        editingSkillText = editableSkillList[index];
+    }
+
+    private void SaveEditSkill()
+    {
+        if (!editingSkillIndex.HasValue)
+            return;
+
+        var oldSkill = editableSkillList[editingSkillIndex.Value];
+        var updated = (editingSkillText ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(updated))
+            return;
+
+        editableSkillList[editingSkillIndex.Value] = updated;
+        if (selectedSkillsForSearch.Remove(oldSkill))
+        {
+            selectedSkillsForSearch.Add(updated);
+        }
+        editingSkillIndex = null;
+        editingSkillText = string.Empty;
+    }
+
+    private void CancelEditSkill()
+    {
+        editingSkillIndex = null;
+        editingSkillText = string.Empty;
+    }
+
+    private void ToggleSkillSelection(string skill)
+    {
+        if (selectedSkillsForSearch.Contains(skill))
+            selectedSkillsForSearch.Remove(skill);
+        else
+            selectedSkillsForSearch.Add(skill);
+    }
+
+    private static string FormatResumeTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return string.Empty;
+
+        return title.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+            ? title[..^4]
+            : title;
     }
 }

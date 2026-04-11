@@ -7,6 +7,7 @@
         public string Address { get; set; } = "";
         public string Summary { get; set; } = "";
         public List<string> Skills { get; set; } = new();
+        public List<string> SelectedSkills { get; set; } = new();
         public List<string> Languages { get; set; } = new();
         public List<ExperienceItem> Experience { get; set; } = new();
         public List<EducationItem> Education { get; set; } = new();

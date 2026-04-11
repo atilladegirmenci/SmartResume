@@ -11,6 +11,7 @@
        // public string Country { get; set; } = "";
         public string Summary { get; set; } = "";
         public List<string> Skills { get; set; } = new();
+        public List<string> SelectedSkills { get; set; } = new();
         public List<string> Languages { get; set; } = new();
         public List<ExperienceItemModel> Experience { get; set; } = new();
         public List<EducationItemModel> Education { get; set; } = new();

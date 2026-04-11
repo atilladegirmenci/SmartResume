@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -105,6 +106,22 @@ namespace SmartResume.AppServices
                 File.Delete(resume.StoragePath);
         }
 
+        public async Task UpdateResumeTitleAsync(int resumeId, int userId, string userGivenTitle)
+        {
+            var resume = await _context.Resumes.FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
+            if (resume == null) throw new KeyNotFoundException("Resume not found.");
+
+            var trimmedTitle = (userGivenTitle ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(trimmedTitle))
+                throw new ArgumentException("Title cannot be empty.");
+
+            if (trimmedTitle.Length > 200)
+                throw new ArgumentException("Title cannot be longer than 200 characters.");
+
+            resume.UserGivenTitle = trimmedTitle;
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<ResumeAnalysisResponse> AnalyzeResumeAsync(int resumeId, int userId)
         {
             var resume = await _context.Resumes.FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
@@ -137,6 +154,85 @@ namespace SmartResume.AppServices
             return analysisResult;
         }
 
+        public async Task<ResumeAnalysisResponse> GetSavedAnalysisAsync(int resumeId, int userId)
+        {
+            var resume = await _context.Resumes
+                .Include(r => r.ResumeSkills)
+                    .ThenInclude(rs => rs.Skill)
+                .Include(r => r.Educations)
+                .Include(r => r.Experiences)
+                .FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
+
+            if (resume == null)
+                throw new KeyNotFoundException("Resume not found.");
+
+            if (!resume.IsAnalyzed)
+                throw new InvalidOperationException("Resume has not been analyzed yet.");
+
+            ResumeAnalysisResponse response;
+
+            if (!string.IsNullOrWhiteSpace(resume.AnalysisResult))
+            {
+                response = System.Text.Json.JsonSerializer.Deserialize<ResumeAnalysisResponse>(
+                    resume.AnalysisResult,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                ) ?? new ResumeAnalysisResponse();
+            }
+            else
+            {
+                response = new ResumeAnalysisResponse();
+            }
+
+            response.Skills = resume.ResumeSkills
+                .Where(rs => rs.Skill != null && !string.IsNullOrWhiteSpace(rs.Skill.SkillName))
+                .OrderBy(rs => rs.Importance)
+                .Select(rs => rs.Skill.SkillName)
+                .Distinct()
+                .ToList();
+
+            response.SelectedSkills = resume.ResumeSkills
+                .Where(rs => rs.IsSelectedForSearch && rs.Skill != null && !string.IsNullOrWhiteSpace(rs.Skill.SkillName))
+                .OrderBy(rs => rs.Importance)
+                .Select(rs => rs.Skill.SkillName)
+                .Distinct()
+                .ToList();
+
+            response.Education = resume.Educations
+                .OrderByDescending(e => e.EndDate ?? DateTime.MinValue)
+                .Select(e => new EducationItem
+                {
+                    School = e.InstitutionName ?? string.Empty,
+                    Degree = e.Degree ?? string.Empty,
+                    StartDate = FormatDateOrEmpty(e.StartDate),
+                    EndDate = FormatDateOrEmpty(e.EndDate)
+                })
+                .ToList();
+
+            response.Experience = resume.Experiences
+                .OrderByDescending(e => e.EndDate ?? DateTime.MinValue)
+                .Select(e => new ExperienceItem
+                {
+                    Company = e.CompanyName ?? string.Empty,
+                    Title = e.PositionTitle ?? string.Empty,
+                    StartDate = FormatDateOrEmpty(e.StartDate),
+                    EndDate = FormatDateOrEmpty(e.EndDate)
+                })
+                .ToList();
+
+            var contact = await _context.ContactDetails
+                .Where(cd => cd.ResumeID == resumeId)
+                .OrderByDescending(cd => cd.ContactDetailID)
+                .FirstOrDefaultAsync();
+
+            response.ContactDetails ??= new DTOs.Responses.ContactDetails();
+            response.ContactDetails.Email = contact?.Email ?? string.Empty;
+            response.ContactDetails.Phone = contact?.PhoneNumber ?? string.Empty;
+            response.ContactDetails.City = contact?.City ?? string.Empty;
+            response.ContactDetails.Country = contact?.Country ?? string.Empty;
+
+            return response;
+        }
+
         public async Task SaveAnalysisAsync(int resumeId, int userId, SaveResumeAnalysisRequest request)
         {
             if (request == null)
@@ -159,6 +255,12 @@ namespace SmartResume.AppServices
                 .Select(s => s.Trim().ToLower())
                 .Distinct()
                 .ToList();
+
+            var selectedSkills = (request.SelectedSkills ?? new List<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim().ToLower())
+                .Distinct()
+                .ToHashSet();
 
             var existingSkills = await _context.Skills
                 .Where(s => normalizedSkills.Contains(s.SkillName))
@@ -191,7 +293,10 @@ namespace SmartResume.AppServices
                 {
                     ResumeID = resume.ResumeID,
                     Skill = skill,
-                    Importance = i + 1
+                    Importance = i + 1,
+                    IsSelectedForSearch = selectedSkills.Count == 0
+                        ? i < 3
+                        : selectedSkills.Contains(skillName)
                 });
             }
 
@@ -252,6 +357,11 @@ namespace SmartResume.AppServices
             resume.IsAnalyzed = true;
             
             await _context.SaveChangesAsync();
+        }
+
+        private static string FormatDateOrEmpty(DateTime? date)
+        {
+            return date.HasValue ? date.Value.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) : string.Empty;
         }
     }
 }

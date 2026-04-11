@@ -32,7 +32,7 @@ public class GeminiService : IGeminiService
 
 
         var prompt = @"You are a highly experienced HR specialist tasked with analyzing resumes. 
-Extract information from the CV text below and return it ONLY in JSON format. Do not write anything else, only JSON.
+Extract information from the CV text below and return it ONLY in JSON format.
 
 Required output format:
 {
@@ -61,19 +61,25 @@ Required output format:
   ""contactDetails"": {
     ""email"": ""Email address"",
     ""phone"": ""Phone number"",
-    ""country"": ""Country""
-    ""city"": ""City"",
+    ""country"": ""Country"",
+    ""city"": ""City""
     } 
 }
 Rules for extraction:
-1. If any field cannot be found, return an empty string or an empty array. Preserve the original language of the CV content as is.
+1. If any field cannot be found, return an empty string or an empty array.
 2. SKILLS SORTING: Analyze the resume text and organize the ""skills"" array from HIGH to LOW importance. Consider the relevance of the skills to the candidate's core experience, projects and education, as well as their frequency in the resume text. The most critical technical or professional skills must be at the top of the array.
-3. Date rules:
+3. Preserve the original language of the CV content as is. do not translate any content. If the CV is in a language other than English, return all fields in that language.
+4. Date rules:
 - Use format ""dd.MM.yyyy"".
 - If only the year is available, use ""01.01.YYYY"".
 - If month and year are available but day is missing, use ""01.MM.YYYY"".
 - If the position or education is ongoing, set endDate to an empty string """".
 - Do NOT guess dates. Use only information explicitly present in the CV.
+5. CRITICAL:
+- Return ONLY raw JSON
+- Do NOT include any explanation
+- Do NOT include any text before or after JSON
+- The response must start with '{' and end with '}'
 CV Text:
 " + resumeText;
         
@@ -95,6 +101,9 @@ CV Text:
             {
                 response = await httpClient.PostAsync(requestUrl, content);
                 responseBody = await response.Content.ReadAsStringAsync();
+                
+
+                Console.WriteLine(responseBody.ToString());
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -117,25 +126,51 @@ CV Text:
             }
 
             using var doc = JsonDocument.Parse(responseBody);
-            var rawText = doc.RootElement
+            var parts = doc.RootElement
                 .GetProperty("candidates")[0]
                 .GetProperty("content")
-                .GetProperty("parts")[0]
+                .GetProperty("parts");
+
+            // Gemini can return multiple parts. Prefer the second part when available.
+            int preferredPartIndex = parts.GetArrayLength() > 1 ? 1 : 0;
+            var rawText = parts[preferredPartIndex]
                 .GetProperty("text")
                 .GetString() ?? "";
 
-            // Markdown temizliği
-            rawText = rawText.Trim();
-            if (rawText.StartsWith("```json")) rawText = rawText.Substring(7);
-            if (rawText.StartsWith("```")) rawText = rawText.Substring(3);
-            if (rawText.EndsWith("```")) rawText = rawText.Substring(0, rawText.Length - 3);
-
-            return rawText.Trim();
+            return ExtractJsonOnly(rawText);
         }
         catch (Exception ex)
         {
             // Tüm hata yollarında bir exception fırlatarak CS0161 hatasını engelliyoruz
             throw new Exception($"an error occured during analyzing resume: {ex.Message}");
         }
+    }
+
+    private static string ExtractJsonOnly(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            throw new Exception("Gemini returned empty content.");
+
+        var cleaned = text.Trim();
+
+        if (cleaned.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+            cleaned = cleaned.Substring(7).Trim();
+        if (cleaned.StartsWith("```"))
+            cleaned = cleaned.Substring(3).Trim();
+        if (cleaned.EndsWith("```"))
+            cleaned = cleaned.Substring(0, cleaned.Length - 3).Trim();
+
+        // Keep only JSON block in case Gemini adds explanation text before/after
+        var firstBrace = cleaned.IndexOf('{');
+        var lastBrace = cleaned.LastIndexOf('}');
+
+        if (firstBrace == -1 || lastBrace == -1 || lastBrace <= firstBrace)
+            throw new Exception("Gemini response does not contain valid JSON object.");
+
+        var jsonOnly = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1).Trim();
+
+        // Validate JSON before returning
+        using var _ = JsonDocument.Parse(jsonOnly);
+        return jsonOnly;
     }
 }

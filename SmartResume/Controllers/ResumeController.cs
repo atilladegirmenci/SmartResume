@@ -125,6 +125,29 @@ namespace SmartCV.Controllers
             }
         }
 
+        [HttpPut("{resumeId}/title")]
+        public async Task<IActionResult> UpdateResumeTitle(int resumeId, [FromBody] UpdateResumeTitleRequest request)
+        {
+            try
+            {
+                int userId = GetUserId();
+                await _resumeAppService.UpdateResumeTitleAsync(resumeId, userId, request?.UserGivenTitle ?? string.Empty);
+                return Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
         [HttpPost("analyze/{id}")]
         public async Task<IActionResult> AnalyzeResume(int id)
         {
@@ -149,6 +172,29 @@ namespace SmartCV.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = $"Analysis failed: {ex.Message}" });
+            }
+        }
+
+        [HttpGet("{resumeId}/analysis-result")]
+        public async Task<IActionResult> GetSavedAnalysisResult(int resumeId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                var analysisResult = await _resumeAppService.GetSavedAnalysisAsync(resumeId, userId);
+                return Ok(analysisResult);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
         }
 
