@@ -21,17 +21,20 @@ namespace SmartResume.AppServices
         private readonly IWebHostEnvironment _environment;
         private readonly IOcrService _ocrService;
         private readonly IGeminiService _geminiService;
+        private readonly IFileStorageService _fileStorageService; // Eklendi
 
         public ResumeAppService(
-            ApplicationDbContext context, 
-            IWebHostEnvironment environment, 
-            IOcrService ocrService, 
-            IGeminiService geminiService)
+            ApplicationDbContext context,
+            IWebHostEnvironment environment,
+            IOcrService ocrService,
+            IGeminiService geminiService,
+            IFileStorageService fileStorageService) // Constructor'a eklendi
         {
             _context = context;
             _environment = environment;
             _ocrService = ocrService;
             _geminiService = geminiService;
+            _fileStorageService = fileStorageService; // Atama yapıldı
         }
 
         public async Task<int> UploadResumeAsync(IFormFile file, int userId)
@@ -39,27 +42,19 @@ namespace SmartResume.AppServices
             if (file == null || file.Length == 0)
                 throw new ArgumentException("No file uploaded.");
 
-            string rootPath = _environment.ContentRootPath;
-            string uploadsFolder = Path.Combine(rootPath, "UploadedCVs");
+            // 1. R2'YE YÜKLE (Yerel klasör yerine)
+            using var stream = file.OpenReadStream();
+            string storagePath = await _fileStorageService.UploadFileAsync(stream, file.FileName, file.ContentType);
 
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            string uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
-            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
+            // 2. VERİTABANINA KAYDET
             var resume = new Resume
             {
                 UserID = userId,
                 OriginalFileName = file.FileName,
-                StoragePath = filePath,
-                UserGivenTitle = file.FileName,
-                UploadedAt = DateTime.UtcNow
+                StoragePath = storagePath, // R2'den dönen Key
+                UserGivenTitle = Path.GetFileNameWithoutExtension(file.FileName),
+                UploadedAt = DateTime.UtcNow,
+                IsAnalyzed = false
             };
 
             _context.Resumes.Add(resume);
@@ -88,10 +83,17 @@ namespace SmartResume.AppServices
         {
             var resume = await _context.Resumes.FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
             if (resume == null) throw new KeyNotFoundException("Resume not found.");
-            if (!File.Exists(resume.StoragePath)) throw new FileNotFoundException("Physical file not found.");
 
-            var fileBytes = await File.ReadAllBytesAsync(resume.StoragePath);
-            return (fileBytes, "application/pdf", resume.OriginalFileName ?? "resume.pdf");
+            // R2'DEN İNDİR
+            try
+            {
+                var fileBytes = await _fileStorageService.DownloadFileAsync(resume.StoragePath);
+                return (fileBytes, "application/pdf", resume.OriginalFileName ?? "resume.pdf");
+            }
+            catch (Exception ex)
+            {
+                throw new FileNotFoundException($"Bulut depolamadaki dosyaya erişilemedi: {ex.Message}");
+            }
         }
 
         public async Task DeleteResumeAsync(int resumeId, int userId)
@@ -99,11 +101,20 @@ namespace SmartResume.AppServices
             var resume = await _context.Resumes.FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
             if (resume == null) throw new KeyNotFoundException("Resume not found.");
 
+            // 1. R2'DEN SİL
+            try
+            {
+                await _fileStorageService.DeleteFileAsync(resume.StoragePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[R2 Delete Error]: {ex.Message}");
+                // Dosya bulutta silinemese bile DB'den silmeye devam edebiliriz veya hata fırlatabiliriz.
+            }
+
+            // 2. DB'DEN SİL
             _context.Resumes.Remove(resume);
             await _context.SaveChangesAsync();
-
-            if (File.Exists(resume.StoragePath))
-                File.Delete(resume.StoragePath);
         }
 
         public async Task UpdateResumeTitleAsync(int resumeId, int userId, string userGivenTitle)
@@ -115,9 +126,6 @@ namespace SmartResume.AppServices
             if (string.IsNullOrWhiteSpace(trimmedTitle))
                 throw new ArgumentException("Title cannot be empty.");
 
-            if (trimmedTitle.Length > 200)
-                throw new ArgumentException("Title cannot be longer than 200 characters.");
-
             resume.UserGivenTitle = trimmedTitle;
             await _context.SaveChangesAsync();
         }
@@ -126,23 +134,24 @@ namespace SmartResume.AppServices
         {
             var resume = await _context.Resumes.FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
             if (resume == null) throw new KeyNotFoundException("Resume not found in database.");
-            if (!File.Exists(resume.StoragePath)) throw new FileNotFoundException("Physical resume file not found.");
 
-            // 1. OCR ile text çıkar
-            byte[] fileBytes = await File.ReadAllBytesAsync(resume.StoragePath);
+            // 1. R2'DEN VERİYİ ÇEK (OCR İÇİN)
+            byte[] fileBytes = await _fileStorageService.DownloadFileAsync(resume.StoragePath);
+            
+            // 2. OCR ile text çıkar
             string rawText = _ocrService.ExtractTextFromPdf(fileBytes);
             resume.ExtractedRawText = rawText;
 
-            // 2. Gemini ile analiz yap (JSON string döner)
+            // 3. Gemini ile analiz yap
             string analysisJson = await _geminiService.AnalyzeResumeAsync(rawText);
             resume.AnalysisResult = analysisJson;
             resume.LastAnalyzedAt = DateTime.UtcNow;
+            resume.IsAnalyzed = true;
 
-            // 3. Kaydet
+            // 4. Kaydet
             _context.Resumes.Update(resume);
             await _context.SaveChangesAsync();
 
-            // 4. JSON'u parse edip DTO olarak döndür
             var analysisResult = System.Text.Json.JsonSerializer.Deserialize<ResumeAnalysisResponse>(
                 analysisJson,
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
@@ -153,6 +162,9 @@ namespace SmartResume.AppServices
 
             return analysisResult;
         }
+
+        // GetSavedAnalysisAsync ve SaveAnalysisAsync metodların veritabanı odaklı olduğu için 
+        // onlara dokunmana gerek yok, mevcut halleriyle kalabilirler.
 
         public async Task<ResumeAnalysisResponse> GetSavedAnalysisAsync(int resumeId, int userId)
         {
@@ -235,7 +247,7 @@ namespace SmartResume.AppServices
 
         public async Task SaveAnalysisAsync(int resumeId, int userId, SaveResumeAnalysisRequest request)
         {
-            if (request == null)
+             if (request == null)
                 throw new ArgumentException("Invalid request body.");
 
             var resume = await _context.Resumes
@@ -330,8 +342,6 @@ namespace SmartResume.AppServices
             await _context.Experiences.AddRangeAsync(experienceEntities);
 
             // ----- CONTACT INFO -----
-            // To prevent duplicates, we might want to clean up existing ContactDetails or update it.
-            // Assuming this is a one-to-one or similar mapping.
             var existingContact = await _context.ContactDetails.FirstOrDefaultAsync(cd => cd.ResumeID == resumeId);
             if (existingContact != null)
             {
@@ -353,7 +363,6 @@ namespace SmartResume.AppServices
 
             // ----- METADATA -----
             resume.LastAnalyzedAt = DateTime.UtcNow;
-            resume.UploadedAt = DateTime.UtcNow;
             resume.IsAnalyzed = true;
             
             await _context.SaveChangesAsync();

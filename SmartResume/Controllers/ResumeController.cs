@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using System.IO;
+using SmartResume.Data;
+using SmartResume.Data.Models;
+using SmartResume.Services.Interfaces;
 
 namespace SmartCV.Controllers
 {
@@ -30,36 +33,34 @@ namespace SmartCV.Controllers
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                               ?? User.FindFirst("sub")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim))
-                throw new UnauthorizedAccessException("User ID not found.");
-
-            if (!int.TryParse(userIdClaim, out int userId))
-                throw new UnauthorizedAccessException("Invalid user ID.");
+            
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                throw new UnauthorizedAccessException("User ID not found or invalid.");
 
             return userId;
         }
 
         [HttpPost("upload")]
-        [Authorize]
         [DisableRequestSizeLimit]
         public async Task<IActionResult> UploadResume(IFormFile file)
         {
+            if (file == null || file.Length == 0) return BadRequest("Dosya seçilmedi.");
+
             try
             {
                 int userId = GetUserId();
+
+                // TÜM İŞ MANTIĞI BURADA: 
+                // 1. R2'ye yükleme
+                // 2. Veritabanına kayıt
+                // Bu işlemler ResumeAppService.UploadResumeAsync içinde hallediliyor.
                 var resumeId = await _resumeAppService.UploadResumeAsync(file, userId);
+
                 return Ok(new { message = "Upload successful", resumeId = resumeId });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[Upload Error]: {ex.Message}");
                 return StatusCode(500, $"Server error during cv upload: {ex.Message}");
             }
         }
@@ -73,7 +74,7 @@ namespace SmartCV.Controllers
                 var resumes = await _resumeAppService.GetMyResumesAsync(userId);
                 return Ok(resumes);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
                 return Unauthorized(ex.Message);
             }
@@ -88,15 +89,7 @@ namespace SmartCV.Controllers
                 var fileData = await _resumeAppService.GetResumeFileAsync(id, userId);
                 return File(fileData.FileBytes, fileData.ContentType, fileData.OriginalFileName);
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (FileNotFoundException ex)
+            catch (Exception ex)
             {
                 return NotFound(ex.Message);
             }
@@ -111,17 +104,9 @@ namespace SmartCV.Controllers
                 await _resumeAppService.DeleteResumeAsync(id, userId);
                 return Ok(new { message = "Resume deleted successfully." });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (KeyNotFoundException)
+            catch (Exception)
             {
                 return NotFound();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error deleting resume: {ex.Message}");
             }
         }
 
@@ -134,20 +119,37 @@ namespace SmartCV.Controllers
                 await _resumeAppService.UpdateResumeTitleAsync(resumeId, userId, request?.UserGivenTitle ?? string.Empty);
                 return Ok();
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
         }
-
+[HttpPost("{resumeId}/analysis")]
+public async Task<IActionResult> SaveAnalysis(int resumeId, [FromBody] SaveResumeAnalysisRequest request)
+{
+    try
+    {
+        int userId = GetUserId();
+        await _resumeAppService.SaveAnalysisAsync(resumeId, userId, request);
+        return Ok(new { message = "Analysis saved successfully." });
+    }
+    catch (ArgumentException ex)
+    {
+        return BadRequest(ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Unauthorized(ex.Message);
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return NotFound(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, $"Error saving analysis: {ex.Message}");
+    }
+}
         [HttpPost("analyze/{id}")]
         public async Task<IActionResult> AnalyzeResume(int id)
         {
@@ -156,18 +158,6 @@ namespace SmartCV.Controllers
                 int userId = GetUserId();
                 var analysisResult = await _resumeAppService.AnalyzeResumeAsync(id, userId);
                 return Ok(analysisResult);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (FileNotFoundException ex)
-            {
-                return NotFound(ex.Message);
             }
             catch (Exception ex)
             {
@@ -184,40 +174,9 @@ namespace SmartCV.Controllers
                 var analysisResult = await _resumeAppService.GetSavedAnalysisAsync(resumeId, userId);
                 return Ok(analysisResult);
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
                 return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpPost("{resumeId}/analysis")]
-        public async Task<IActionResult> SaveAnalysis(int resumeId, [FromBody] SaveResumeAnalysisRequest request)
-        {
-            try
-            {
-                int userId = GetUserId();
-                await _resumeAppService.SaveAnalysisAsync(resumeId, userId, request);
-                return Ok();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
             }
         }
 
@@ -228,27 +187,10 @@ namespace SmartCV.Controllers
             {
                 int userId = GetUserId();
                 var jobList = await _jobAppService.GetRecommendationsForResumeAsync(resumeId, userId);
-                
-                // Log the results to the console so we can verify during testing
-                Console.WriteLine($"\n=== SUCCESS: FOUND {jobList?.Count ?? 0} JOBS ===");
-                var jsonLogs = System.Text.Json.JsonSerializer.Serialize(jobList, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-                Console.WriteLine(jsonLogs);
-                Console.WriteLine("==================================================\n");
-
                 return Ok(jobList);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Resume not found.")
-                    return NotFound(ex.Message);
-                if (ex.Message.Contains("analyzed before getting job recommendations") || ex.Message.Contains("No skills"))
-                    return BadRequest(ex.Message);
-
-                Console.WriteLine($"[JobAppService] Error: {ex.Message}");
                 return StatusCode(500, $"Error fetching job recommendations: {ex.Message}");
             }
         }

@@ -11,42 +11,38 @@ using SmartResume.Services.Interfaces;
 
 
     public class JobService : IJobService
+    {private readonly string _apiKey;
+    private readonly HttpClient _httpClient;
+
+    // HttpClient'ı constructor üzerinden enjekte et
+    public JobService(IConfiguration configuration, HttpClient httpClient)
     {
-        private readonly string _apiKey;
-        private static readonly HttpClient _httpClient = new HttpClient();
-
-        public JobService(IConfiguration configuration)
-        {
-            _apiKey = configuration["Jooble:ApiKey"]
-               ?? throw new InvalidOperationException("Job API Key is missing");
-        }
-
-        public async Task<string> GetJobRecommendationsAsync(List<string> keywords, string location)
-        {
-            var requestUrl = $"https://tr.jooble.org/api/{_apiKey}";
-
-            Console.WriteLine($"[JobService] Keywords sent to Jooble: {string.Join(", ", keywords)}");
-            Console.WriteLine($"[JobService] Location sent to Jooble: {location}");
-
-            var requestBody = new
-            {
-                keywords = string.Join(" ", keywords),
-                location = location,
-                page = "1"
-            };
-
-            Console.WriteLine($"[JobService] Request payload keywords text: {requestBody.keywords}");
-
-            var jsonContent = JsonContent.Create(requestBody);
-            var response = await _httpClient.PostAsync(requestUrl, jsonContent);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException($"Jooble API request failed with status code: {response.StatusCode}");
-            }
-
-            var jsonResponse = await response.Content.ReadAsStringAsync();
-            return jsonResponse;
-        }
+        _apiKey = configuration["Jooble:ApiKey"]
+           ?? throw new InvalidOperationException("Job API Key is missing");
+        _httpClient = httpClient;
     }
 
+   public async Task<string> GetJobRecommendationsAsync(List<string> keywords, string location)
+{
+    var requestUrl = $"https://jooble.org/api/{_apiKey}";
+
+    var requestBody = new
+    {
+        keywords = string.Join(" ", keywords), // Kelimeleri boşlukla birleştir
+        location = location,
+        page = "1"
+    };
+
+    var jsonPayload = JsonSerializer.Serialize(requestBody);
+    var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+    var response = await _httpClient.PostAsync(requestUrl, content);
+
+    if (!response.IsSuccessStatusCode)
+    {
+        throw new HttpRequestException($"Jooble Hatası: {response.StatusCode}");
+    }
+
+    return await response.Content.ReadAsStringAsync();
+}
+}

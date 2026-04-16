@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-                .WithOrigins("https://localhost:7099") // Blazor WASM
+               .WithOrigins("http://localhost:5207") // Blazor WASM
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -57,7 +57,11 @@ builder.Services.AddScoped<IGeminiService, GeminiService>();
 builder.Services.AddScoped<IJobService, JobService>();
 builder.Services.AddScoped<IJobAppService, JobAppService>();
 builder.Services.AddScoped<IResumeAppService, ResumeAppService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddHttpClient(); 
 
+builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddScoped<IJobAppService, JobAppService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
