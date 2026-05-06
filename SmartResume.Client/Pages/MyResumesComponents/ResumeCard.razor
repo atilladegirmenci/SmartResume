@@ -1,0 +1,193 @@
+@using SmartResume.Client.Models.Resume
+
+@if (SelectedResume != null)
+{
+    <div class="card shadow-sm h-100 border-0 bg-transparent same-height-panel">
+        <div class="card-header bg-white shadow-sm rounded mb-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                @if (IsEditingTitle)
+                {
+                    <div class="input-group" style="max-width: 520px;">
+                        <input class="form-control" value="@EditableTitle" @oninput="OnTitleInput" />
+                        <button class="btn btn-success" type="button" @onclick="OnSaveTitle" disabled="@IsUpdatingTitle">
+                            @if (IsUpdatingTitle)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-lg"></i>
+                            }
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" @onclick="OnCancelEditTitle" disabled="@IsUpdatingTitle">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <h4 class="mb-0 text-dark">@FormatResumeTitle(SelectedResume.UserGivenTitle)</h4>
+                    <button class="btn btn-sm btn-link text-warning p-0" type="button" title="Edit title" @onclick="OnStartEditTitle">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                }
+            </div>
+            <small class="text-muted">
+                <i class="bi bi-calendar3 me-1"></i> Uploaded: @SelectedResume.UploadedAt.ToString("g")
+            </small>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(TitleError))
+        {
+            <div class="alert alert-warning py-2 px-3 mb-3">@TitleError</div>
+        }
+
+        <div class="card-body p-0 d-flex flex-column">
+            <div class="d-flex flex-wrap justify-content-center align-items-center mb-3 gap-3">
+                <div class="btn-group shadow-sm">
+                    <button class="btn btn-primary" @onclick="OnDownloadPdf">
+                        <i class="bi bi-download me-1"></i> Download
+                    </button>
+
+                    <button class="btn btn-warning text-white" @onclick="OnAnalyzeResume" disabled="@IsAnalyzing">
+                        @if (IsAnalyzing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span> Analyzing...</span>
+                        }
+                        else if (SelectedResume.IsAnalyzed)
+                        {
+                            <i class="bi bi-arrow-repeat me-1"></i> <span> Reanalyze with AI</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-magic me-1"></i> <span> Analyze with AI</span>
+                        }
+                    </button>
+
+                    <button class="btn btn-danger" @onclick="OnDeleteResume">
+                        <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                </div>
+
+                <button class="btn btn-success shadow-sm" @onclick="OnGetJobs" disabled="@DisableGetJobs">
+                    @if (IsGettingJobs)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>Loading Jobs...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-briefcase-fill me-1"></i>
+                        <span>Get Jobs</span>
+                    }
+                </button>
+
+                <button class="btn btn-outline-secondary shadow-sm" @onclick="OnLoadSavedAnalysis" disabled="@(IsLoadingSavedAnalysis || !SelectedResume.IsAnalyzed)">
+                    @if (IsLoadingSavedAnalysis)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>Loading Analysis...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-sliders me-1"></i>
+                        <span>Edit Saved Analysis</span>
+                    }
+                </button>
+
+                @if (!SelectedResume.IsAnalyzed)
+                {
+                    <small class="text-warning fw-semibold">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Analyze and save your CV to unlock job recommendations!
+                    </small>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(AnalysisError))
+            {
+                <div class="alert alert-danger mb-3 shadow-sm">@AnalysisError</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(JobError))
+            {
+                <div class="alert alert-warning mb-3 shadow-sm">
+                    <i class="bi bi-exclamation-triangle me-2"></i>@JobError
+                </div>
+            }
+
+            <div class="flex-grow-1 w-100 d-flex justify-content-center">
+                <div class="bg-light shadow-sm rounded border pdf-preview-frame preview-container @(IsWidePreview ? "pdf-preview-wide" : "pdf-preview-narrow")"
+                     style="height: 100%; min-height: 0; overflow: hidden;">
+                    @if (IsAnalyzing)
+                    {
+                        <div class="analyze-overlay">
+                            <div class="analyze-overlay-text">AI is analyzing your CV...</div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(PdfBlobUrl))
+                    {
+                        <iframe src="@PdfBlobUrl" style="width:100%; height:100%; min-height: 0; border:none;"></iframe>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column justify-content-center align-items-center h-100 text-muted" style="min-height: 0;">
+                            <div class="spinner-border mb-3" style="width: 3rem; height: 3rem;"></div>
+                            <h5>Loading PDF Preview...</h5>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary text-center mt-5 shadow-sm">
+        <h5><i class="bi bi-arrow-left me-2"></i>Select a CV from the left panel to view details.</h5>
+    </div>
+}
+
+@code {
+    [Parameter] public ResumeResponseModel? SelectedResume { get; set; }
+    [Parameter] public bool IsWidePreview { get; set; }
+
+    [Parameter] public bool IsEditingTitle { get; set; }
+    [Parameter] public bool IsUpdatingTitle { get; set; }
+    [Parameter] public string EditableTitle { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> EditableTitleChanged { get; set; }
+    [Parameter] public string? TitleError { get; set; }
+
+    [Parameter] public bool IsAnalyzing { get; set; }
+    [Parameter] public bool IsGettingJobs { get; set; }
+    [Parameter] public bool IsLoadingSavedAnalysis { get; set; }
+    [Parameter] public bool DisableGetJobs { get; set; }
+
+    [Parameter] public string? AnalysisError { get; set; }
+    [Parameter] public string? JobError { get; set; }
+    [Parameter] public string? PdfBlobUrl { get; set; }
+
+    [Parameter] public EventCallback OnStartEditTitle { get; set; }
+    [Parameter] public EventCallback OnCancelEditTitle { get; set; }
+    [Parameter] public EventCallback OnSaveTitle { get; set; }
+    [Parameter] public EventCallback OnDownloadPdf { get; set; }
+    [Parameter] public EventCallback OnAnalyzeResume { get; set; }
+    [Parameter] public EventCallback OnDeleteResume { get; set; }
+    [Parameter] public EventCallback OnGetJobs { get; set; }
+    [Parameter] public EventCallback OnLoadSavedAnalysis { get; set; }
+
+    private async Task OnTitleInput(ChangeEventArgs e)
+    {
+        await EditableTitleChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+    }
+
+    private static string FormatResumeTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return string.Empty;
+
+        return title.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+            ? title[..^4]
+            : title;
+    }
+}

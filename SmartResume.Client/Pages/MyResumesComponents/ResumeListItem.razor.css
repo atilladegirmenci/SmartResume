@@ -1,0 +1,33 @@
+.resume-list-item {
+    width: 100%;
+    text-align: left;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid #e6edf7;
+    border-radius: 12px;
+    background: #ffffff;
+    position: relative;
+    transition: all 0.18s ease;
+}
+
+.resume-list-item:hover {
+    transform: translateY(-1px);
+    border-color: #cedcf3;
+    box-shadow: 0 6px 16px rgba(33, 56, 94, 0.10);
+}
+
+.resume-list-item-active {
+    border-color: #9fbeff;
+    box-shadow: 0 8px 18px rgba(33, 82, 174, 0.16);
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.resume-list-item-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 4px;
+    border-radius: 0 8px 8px 0;
+    background: linear-gradient(180deg, #4f7dff, #3db8ff);
+}

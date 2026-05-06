@@ -1,0 +1,42 @@
+@using SmartResume.Client.Models.Resume
+
+<button type="button"
+        class="resume-list-item @(IsActive ? "resume-list-item-active" : string.Empty)"
+        @onclick="HandleSelect">
+
+    @if (Resume.IsAnalyzed)
+    {
+        <span class="position-absolute top-0 end-0 mt-2 me-2 text-success fw-bold" title="Analyzed">✔</span>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="mb-0 text-truncate fw-semibold text-dark" style="max-width: 90%;">
+            @FormatResumeTitle(Resume.UserGivenTitle)
+        </h6>
+    </div>
+
+    <small class="text-muted d-block" style="font-size: 0.75rem;">
+        <i class="bi bi-clock me-1"></i>@Resume.UploadedAt.ToShortDateString()
+    </small>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public ResumeResponseModel Resume { get; set; } = default!;
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<ResumeResponseModel> OnSelect { get; set; }
+
+    private async Task HandleSelect()
+    {
+        await OnSelect.InvokeAsync(Resume);
+    }
+
+    private static string FormatResumeTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return string.Empty;
+
+        return title.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+            ? title[..^4]
+            : title;
+    }
+}

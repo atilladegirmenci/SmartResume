@@ -7,56 +7,65 @@
 
 <PageTitle>Register</PageTitle>
 
-<h3>Register</h3>
+<div class="auth-shell">
+    <div class="auth-orb auth-orb-1"></div>
+    <div class="auth-orb auth-orb-2"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <EditForm Model="@registerModel" OnValidSubmit="@HandleRegistration" FormName="registerForm">
+    <section class="auth-card">
+        <h1 class="auth-title">Join <span>SmartCV</span></h1>
+        <p class="auth-subtitle">Start optimizing your resume and discover opportunities faster.</p>
 
+        <EditForm Model="@registerModel" OnValidSubmit="@HandleRegistration" FormName="registerForm" class="auth-form">
             <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" />
+            <ValidationSummary class="auth-validation-summary" />
 
             @if (!string.IsNullOrEmpty(apiErrorMessage))
             {
-                <div class="alert alert-danger" role="alert">
+                <div class="auth-alert" role="alert">
                     @apiErrorMessage
                 </div>
             }
 
-            <div class="form-floating mb-3">
-                <InputText id="firstName" class="form-control" @bind-Value="registerModel.FirstName" />
-                <label for="firstName">First Name</label>
-                <ValidationMessage For="@(() => registerModel.FirstName)" class="text-danger" />
+            <div class="auth-grid">
+                <div class="auth-field">
+                    <label for="firstName">First Name</label>
+                    <InputText id="firstName" class="auth-input" @bind-Value="registerModel.FirstName" />
+                    <ValidationMessage For="@(() => registerModel.FirstName)" class="auth-validation-message" />
+                </div>
+
+                <div class="auth-field">
+                    <label for="lastName">Last Name</label>
+                    <InputText id="lastName" class="auth-input" @bind-Value="registerModel.LastName" />
+                    <ValidationMessage For="@(() => registerModel.LastName)" class="auth-validation-message" />
+                </div>
             </div>
 
-            <div class="form-floating mb-3">
-                <InputText id="lastName" class="form-control" @bind-Value="registerModel.LastName" />
-                <label for="lastName">Last Name</label>
-                <ValidationMessage For="@(() => registerModel.LastName)" class="text-danger" />
-            </div>
-
-            <div class="form-floating mb-3">
-                <InputText id="email" type="email" class="form-control" @bind-Value="registerModel.Email" />
+            <div class="auth-field">
                 <label for="email">Email</label>
-                <ValidationMessage For="@(() => registerModel.Email)" class="text-danger" />
+                <InputText id="email" type="email" class="auth-input" @bind-Value="registerModel.Email" />
+                <ValidationMessage For="@(() => registerModel.Email)" class="auth-validation-message" />
             </div>
 
-            <div class="form-floating mb-3">
-                <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" />
+            <div class="auth-field">
                 <label for="password">Password</label>
-                <ValidationMessage For="@(() => registerModel.Password)" class="text-danger" />
+                <InputText id="password" type="password" class="auth-input" @bind-Value="registerModel.Password" />
+                <ValidationMessage For="@(() => registerModel.Password)" class="auth-validation-message" />
             </div>
 
-            <div class="form-floating mb-3">
-                <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" />
+            <div class="auth-field">
                 <label for="confirmPassword">Confirm Password</label>
-                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="text-danger" />
+                <InputText id="confirmPassword" type="password" class="auth-input" @bind-Value="registerModel.ConfirmPassword" />
+                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="auth-validation-message" />
             </div>
 
-            <button type="submit" class="btn btn-primary">Register</button>
-
+            <button type="submit" class="auth-btn">Register</button>
         </EditForm>
-    </div>
+
+        <p class="auth-switch">
+            Already have an account?
+            <a href="/login">Login</a>
+        </p>
+    </section>
 </div>
 
 

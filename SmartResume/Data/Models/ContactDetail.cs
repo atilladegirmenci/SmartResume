@@ -27,12 +27,6 @@ namespace SmartResume.Data.Models
         [EmailAddress]
         public string? Email { get; set; } // The email written on the CV (might differ from User account email)
 
-        //[StringLength(500)]
-        //public string? LinkedInUrl { get; set; }
-
-        //[StringLength(500)]
-        //public string? PortfolioUrl { get; set; }
-
         // --- Relationship ---
         [Required]
         public int ResumeID { get; set; }

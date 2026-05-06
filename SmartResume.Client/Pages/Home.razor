@@ -2,50 +2,43 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 @using Microsoft.AspNetCore.Components.Authorization
-@inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Home - SmartCV</PageTitle>
 
 <AuthorizeView>
     <Authorized>
-        @* --- USER IS LOGGED IN --- *@
-        <div class="container mt-5 text-center">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">redirecting...</p>
+        <div class="splash-shell">
+            <section class="splash-card splash-content">
+                <h1 class="splash-title">You are signed in to <span>SmartCV</span></h1>
+                <p class="splash-subtitle mt-3">Continue where you left off or explore the platform.</p>
+                <div class="cta-row mt-4">
+                    <a href="my-resumes" class="cta-btn cta-btn-primary">Go to My Resumes</a>
+                </div>
+            </section>
         </div>
     </Authorized>
 
     <NotAuthorized>
-        @* --- USER IS NOT LOGGED IN / GUEST --- *@
-        
-        <div class="container mt-5 text-center">
-            <div class="alert alert-light shadow-sm p-5">
-                <h1 class="display-4">Welcome to SmartCV!</h1>
-                <p class="lead">Upload your CV, let AI analyze it, and discover the best job opportunities for you.</p>
-                @* <div class="mt-4">
-                    <a href="login" class="btn btn-primary btn-lg me-2">Giriş Yap</a>
-                    <a href="register" class="btn btn-outline-secondary btn-lg">Kayıt Ol</a>
-                </div> *@
-            </div>
+        <div class="splash-shell">
+            <div class="bg-orb orb-1"></div>
+            <div class="bg-orb orb-2"></div>
+            <div class="bg-orb orb-3"></div>
+
+            <section class="splash-card splash-content">
+                <h1 class="splash-title">
+                    Build a smarter career path with
+                    <span>SmartCV</span>
+                </h1>
+                <p class="splash-subtitle mt-3">
+                    Upload your CV, get instant AI analysis, and discover matching job opportunities in seconds.
+                </p>
+
+                <div class="cta-row mt-4">
+                    <a href="login" class="cta-btn cta-btn-primary">Explore Job Opportunities</a>
+                </div>
+
+                <p class="trust-note mt-4 mb-0">Fast. Focused. Built for your next opportunity.</p>
+            </section>
         </div>
     </NotAuthorized>
 </AuthorizeView>
-
-@code {
-    protected override async Task OnInitializedAsync()
-    {
-        // 1. Kullanıcının durumunu öğren
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        // 2. Eğer giriş yapmışsa...
-        if (user.Identity is not null && user.Identity.IsAuthenticated)
-        {
-            // 3. ...onu 'my-resumes' sayfasına fırlat!
-            Navigation.NavigateTo("my-resumes");
-        }
-    }
-}

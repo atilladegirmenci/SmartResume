@@ -14,34 +14,38 @@
 
 <PageTitle>Login</PageTitle>
 
-<h3>Login</h3>
+<div class="auth-shell">
+    <div class="auth-orb auth-orb-1"></div>
+    <div class="auth-orb auth-orb-2"></div>
 
-<div class="row">
-    <div class="col-md-6">
-        <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin" FormName="loginForm">
+    <section class="auth-card">
+        <h1 class="auth-title">Sign in to <span>SmartCV</span></h1>
+        <p class="auth-subtitle">Access your resumes, AI analysis, and job matches.</p>
+
+        <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin" FormName="loginForm" class="auth-form">
             <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" />
+            <ValidationSummary class="auth-validation-summary" />
 
             @if (!string.IsNullOrEmpty(apiErrorMessage))
             {
-                <div class="alert alert-danger" role="alert">
+                <div class="auth-alert" role="alert">
                     @apiErrorMessage
                 </div>
             }
 
-            <div class="form-floating mb-3">
-                <InputText id="email" type="email" class="form-control" @bind-Value="loginModel.Email" />
+            <div class="auth-field">
                 <label for="email">Email</label>
-                <ValidationMessage For="@(() => loginModel.Email)" class="text-danger" />
+                <InputText id="email" type="email" class="auth-input" @bind-Value="loginModel.Email" />
+                <ValidationMessage For="@(() => loginModel.Email)" class="auth-validation-message" />
             </div>
 
-            <div class="form-floating mb-3">
-                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
+            <div class="auth-field">
                 <label for="password">Password</label>
-                <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+                <InputText id="password" type="password" class="auth-input" @bind-Value="loginModel.Password" />
+                <ValidationMessage For="@(() => loginModel.Password)" class="auth-validation-message" />
             </div>
 
-            <button type="submit" class="btn btn-primary" disabled="@isLoggingIn">
+            <button type="submit" class="auth-btn" disabled="@isLoggingIn">
                 @if (isLoggingIn)
                 {
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -52,14 +56,13 @@
                     <span>Login</span>
                 }
             </button>
-
         </EditForm>
 
-        <div class="mt-3 text-center">
-            <p>Don't have an account? <a href="/register">Create a new account</a></p>
-        </div>
-
-    </div>
+        <p class="auth-switch">
+            Don't have an account?
+            <a href="/register">Create one</a>
+        </p>
+    </section>
 </div>
 
 @code {

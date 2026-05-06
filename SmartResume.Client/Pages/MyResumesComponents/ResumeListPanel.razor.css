@@ -1,0 +1,61 @@
+.resume-list-panel {
+    position: sticky;
+    top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e7ecf3;
+    border-radius: 0 16px 16px 0;
+    background: linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%);
+    box-shadow: 0 8px 28px rgba(26, 42, 66, 0.08);
+    overflow: hidden;
+}
+
+.resume-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e8edf5;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.resume-list-title {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #3a485a;
+}
+
+.resume-list-title-icon {
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #2c63d6;
+    background: #e9f1ff;
+}
+
+.resume-list-count {
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #385172;
+    border: 1px solid #d6e2f3;
+    background: #ffffff;
+    padding: 0.2rem 0.55rem;
+}
+
+.resume-list-body {
+    padding: 0.6rem;
+    overflow: auto;
+}
+
+.resume-list-footer {
+    padding: 0.85rem;
+    border-top: 1px solid #e8edf5;
+    background: rgba(255, 255, 255, 0.82);
+}

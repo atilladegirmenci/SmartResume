@@ -23,78 +23,69 @@ namespace SmartResume.AppServices
         public async Task<List<JobListingDto>> GetRecommendationsForResumeAsync(int resumeId, int userId)
         {
             var resume = await _context.Resumes.FirstOrDefaultAsync(r => r.ResumeID == resumeId && r.UserID == userId);
+
             if (resume == null) throw new Exception("Resume not found.");
             if (!resume.IsAnalyzed) throw new Exception("Resume must be analyzed before getting job recommendations.");
 
             Console.WriteLine($"[JobAppService] Fetching job recommendations for Resume ID: {resumeId}");
 
-            // 1. LOKASYON TEMİZLEME
-            var contactDetail = await _context.ContactDetails.FirstOrDefaultAsync(cd => cd.ResumeID == resumeId);
-            string location = (contactDetail?.City?.Length > 2) ? contactDetail.City : "Turkey";
+            // Get city from ContactDetail table
+            var contactDetail = await _context.ContactDetails
+                .FirstOrDefaultAsync(cd => cd.ResumeID == resumeId);
 
-            // 2. VERİLERİ TOPLAMA
-            var skills = await _context.ResumeSkills
-                .Where(rs => rs.ResumeID == resumeId && rs.IsSelectedForSearch)
-                .Select(rs => rs.Skill.SkillName)
-                .ToListAsync();
+            string location = contactDetail?.City ?? "Turkey";
+            Console.WriteLine($"[JobAppService] Location: {location}");
 
-            var titles = await _context.Experiences
-                .Where(e => e.ResumeID == resumeId)
-                .Select(e => e.PositionTitle)
-                .ToListAsync();
-
+            // Get degrees from Education table
             var education = await _context.Educations
                 .Where(e => e.ResumeID == resumeId)
                 .OrderByDescending(e => e.EndDate ?? DateTime.MaxValue)
                 .FirstOrDefaultAsync();
 
-            var rawKeywords = new List<string>();
-            rawKeywords.AddRange(titles); 
-            rawKeywords.AddRange(skills);
-            if (!string.IsNullOrWhiteSpace(education?.Degree)) rawKeywords.Add(education.Degree);
+            // get skills from ResumeSkills table, only those selected for search
+            var skills = await _context.ResumeSkills
+             .Where(rs => rs.ResumeID == resumeId)
+             .Where(rs => rs.IsSelectedForSearch)
+             .Select(rs => rs.Skill.SkillName)
+             .Where(s => !string.IsNullOrWhiteSpace(s))
+             .Distinct()
+             .ToListAsync();
 
-           // 3. ANAHTAR KELİMELERİ SADELEŞTİRME
-var cleanKeywords = rawKeywords
-    .Where(k => !string.IsNullOrWhiteSpace(k))
-    .Select(k => k.Split('(')[0].Split('&')[0].Trim())
-    .Where(k => k.Length > 2 && k.Length < 30)
-    .Distinct()
-    .ToList();
+            // Get position titles from experiences table
+            var titles = await _context.Experiences
+                .Where(e => e.ResumeID == resumeId)
+                .Select(e => e.PositionTitle)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct()
+                .ToListAsync();
 
-// --- BURADAN İTİBAREN DEĞİŞTİRİYORUZ ---
-// Jooble için en etkili arama ünvanıdır.
-var searchKeyword = titles.FirstOrDefault();
+            // Build keywords list from skills and degree
+            var keywords = new List<string>();
+            keywords.AddRange(skills);
+            keywords.AddRange(titles);
+            if (!string.IsNullOrWhiteSpace(education?.Degree))
+            {
+                keywords.Add(education.Degree);
+            }
 
-// EĞER ÜNVAN "Software Development" gibi eksikse veya boşsa, daha profesyonel bir hale getirelim
-if (string.IsNullOrEmpty(searchKeyword) || searchKeyword.Equals("Software Development", StringComparison.OrdinalIgnoreCase))
-{
-    // İlk yeteneği al (Örn: C#, Java) ve yanına "Developer" ekle
-    var topSkill = skills.FirstOrDefault() ?? "Software";
-    searchKeyword = $"{topSkill} Engineer"; 
-}
-// Eğer ünvan çok uzunsa cleanKeywords içindeki ilk sade kelimeyi al
-else if (searchKeyword.Length > 25)
-{
-    searchKeyword = cleanKeywords.FirstOrDefault() ?? "IT Specialist";
-}
+            Console.WriteLine($"[JobAppService] Keywords: {string.Join(", ", keywords)}");
 
-Console.WriteLine($"[JobAppService] Optimized Search Keyword for Jooble: {searchKeyword} in {location}");
-// --- DEĞİŞİKLİK BURADA BİTTİ ---
+            if (keywords.Count == 0)
+            {
+                throw new Exception("No skills or education found in resume. Please configure your resume properly.");
+            }
 
-// 4. API ÇAĞRISI (Aşağıdaki kısımlar aynı kalabilir)
-string jobRecommendationsJson = await _jobService.GetJobRecommendationsAsync(new List<string> { searchKeyword }, location);
-// Eğer sonuç boş gelirse (FOUND 0 JOBS durumu), lokasyonu genişletip tekrar dene
-var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-var joobleApiResp = System.Text.Json.JsonSerializer.Deserialize<JoobleApiResponse>(jobRecommendationsJson, options);
+            // Call the external API service
+            string jobRecommendationsJson = await _jobService.GetJobRecommendationsAsync(keywords, location);
 
-if (joobleApiResp?.Jobs == null || !joobleApiResp.Jobs.Any())
-{
-    Console.WriteLine($"[JobAppService] No jobs in {location}. Expanding search to Turkey...");
-    jobRecommendationsJson = await _jobService.GetJobRecommendationsAsync(new List<string> { searchKeyword }, "Turkey");
-    joobleApiResp = System.Text.Json.JsonSerializer.Deserialize<JoobleApiResponse>(jobRecommendationsJson, options);
-}
+            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var joobleApiResp = System.Text.Json.JsonSerializer.Deserialize<JoobleApiResponse>(jobRecommendationsJson, options);
 
-return joobleApiResp?.Jobs ?? new List<JobListingDto>();
+            return joobleApiResp?.Jobs ?? new List<JobListingDto>();
+
+        
+
+
         }
     }
 }

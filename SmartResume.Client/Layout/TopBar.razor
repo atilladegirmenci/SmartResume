@@ -4,40 +4,28 @@
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavigationManager
 
-<header class="top-bar shadow-sm">
-
-    <div class="container-fluid d-flex align-items-center justify-content-between">
-
-        <!-- LOGO -->
+<header class="top-bar">
+    <div class="container-fluid top-bar-inner">
         <a class="navbar-brand brand-logo" href="">
             <span class="bi bi-file-earmark-person me-2"></span>
             SmartCV
         </a>
 
-        <!-- NAVIGATION -->
-        <nav class="d-flex align-items-center gap-2">
-
+        <nav class="nav-actions">
             <AuthorizeView>
-
                 <Authorized>
-
                     <NavLink class="nav-btn" href="my-resumes">
                         <span class="bi bi-files me-1"></span>
                         My Resumes
                     </NavLink>
 
-                    <button class="nav-btn logout-btn"
-                            @onclick="Logout">
-
+                    <button class="nav-btn logout-btn" @onclick="Logout">
                         <span class="bi bi-box-arrow-right me-1"></span>
                         Logout
-
                     </button>
-
                 </Authorized>
 
                 <NotAuthorized>
-
                     <NavLink class="nav-btn" href="register">
                         Register
                     </NavLink>
@@ -45,77 +33,11 @@
                     <NavLink class="nav-btn primary-btn" href="login">
                         Login
                     </NavLink>
-
                 </NotAuthorized>
-
             </AuthorizeView>
-
         </nav>
-
     </div>
-
 </header>
-
-<style>
-
-    /* TOP BAR */
-
-    .top-bar {
-        background: #4a4a4a;
-        padding: 10px 20px;
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-
-    /* LOGO */
-
-    .brand-logo {
-        color: white;
-        font-weight: 700;
-        font-size: 20px;
-        text-decoration: none;
-    }
-
-    /* NAV BUTTON */
-
-    .nav-btn {
-        background: #5e5e5e;
-        color: white;
-        border: none;
-        padding: 7px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all .2s ease;
-    }
-
-        .nav-btn:hover {
-            background: #6f6f6f;
-            color: white;
-        }
-
-    /* LOGIN BUTTON */
-
-    .primary-btn {
-        background: #0d6efd;
-    }
-
-        .primary-btn:hover {
-            background: #0b5ed7;
-        }
-
-    /* LOGOUT */
-
-    .logout-btn {
-        background: #dc3545;
-    }
-
-        .logout-btn:hover {
-            background: #bb2d3b;
-        }
-
-</style>
 
 @code {
     private async Task Logout()

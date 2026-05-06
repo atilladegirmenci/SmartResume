@@ -1,0 +1,301 @@
+@using SmartResume.Client.Models.Resume
+
+<div class="col-xxl-5 col-xl-5 col-lg-5 col-md-12 mb-4 transition-width right-panel-shell">
+
+    @if (IsAnalysisView && AnalysisResult != null)
+    {
+        <div class="card shadow border-0 h-100 right-panel-card">
+            <div class="card-header d-flex justify-content-between align-items-center py-3 right-panel-header right-panel-header-analysis">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Analysis</h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="OnCloseRightPanel"></button>
+            </div>
+            <div class="card-body overflow-auto custom-scrollbar right-panel-body" style="max-height: 78vh;">
+
+                <h6 class="text-secondary border-bottom pb-2 fw-bold right-panel-section-title">Personal Information</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">First Name</label>
+                        <input type="text" class="form-control" @bind-value="AnalysisResult.FirstName" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Last Name</label>
+                        <input type="text" class="form-control" @bind-value="AnalysisResult.LastName" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Email</label>
+                        <input type="text" class="form-control" @bind-value="AnalysisResult.ContactDetails.Email" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Phone</label>
+                        <input type="text" class="form-control" @bind-value="AnalysisResult.ContactDetails.Phone" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Country</label>
+                        <input type="text" class="form-control" @bind-value="AnalysisResult.ContactDetails.Country" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1 d-inline-flex align-items-center gap-1">
+                            <span>City</span>
+                            <span class="info-icon" title="Job recommendations are prioritized around this location.">
+                                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                                    <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                                    <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line>
+                                    <circle cx="8" cy="4.5" r="1" fill="currentColor"></circle>
+                                </svg>
+                            </span>
+                        </label>
+                        <input type="text" class="form-control" @bind-value="AnalysisResult.ContactDetails.City" />
+                    </div>
+                </div>
+
+                <h6 class="text-secondary border-bottom pb-2 mt-2 fw-bold right-panel-section-title">Summary</h6>
+                <textarea class="form-control mb-4 summary-textarea" rows="6" @bind="AnalysisResult.Summary"></textarea>
+
+                <h6 class="text-secondary border-bottom pb-2 fw-bold d-flex align-items-center gap-2 right-panel-section-title">
+                    <span>Skills</span>
+                    <span class="info-icon" title="Personalizing your selected skills helps the system return more relevant job matches.">
+                        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                            <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+                            <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line>
+                            <circle cx="8" cy="4.5" r="1" fill="currentColor"></circle>
+                        </svg>
+                    </span>
+                </h6>
+                @if (EditableSkillList.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @for (int i = 0; i < EditableSkillList.Count; i++)
+                        {
+                            var skillIndex = i;
+                            @if (EditingSkillIndex == skillIndex)
+                            {
+                                <div class="d-inline-flex align-items-center border rounded-pill bg-white px-2 py-1">
+                                    <input class="form-control form-control-sm border-0" style="width: 170px;"
+                                           value="@EditingSkillText" @oninput="OnEditingSkillTextInput" />
+                                    <button type="button" class="btn btn-sm btn-link text-success p-1" title="Save"
+                                            @onclick="OnSaveEditSkill">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-link text-secondary p-1" title="Cancel"
+                                            @onclick="OnCancelEditSkill">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="skill-pill @(SelectedSkillsForSearch.Contains(EditableSkillList[skillIndex]) ? "skill-pill-selected" : "skill-pill-unselected")">
+                                    <span role="button" class="skill-pill-main" @onclick="() => OnToggleSkillSelection.InvokeAsync(EditableSkillList[skillIndex])">
+                                        @if (SelectedSkillsForSearch.Contains(EditableSkillList[skillIndex]))
+                                        {
+                                            <span class="fw-bold">✓</span>
+                                        }
+                                        <span>@EditableSkillList[skillIndex]</span>
+                                    </span>
+
+                                    <button type="button" class="btn btn-sm skill-action-btn skill-action-edit" title="Edit skill"
+                                            @onclick="() => OnStartEditSkill.InvokeAsync(skillIndex)">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+
+                                    <button type="button" class="btn btn-sm skill-action-btn skill-action-remove" title="Remove skill"
+                                            @onclick="() => OnRemoveSkillAt.InvokeAsync(skillIndex)">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small mb-3">No skills found.</div>
+                }
+                <div class="input-group mb-4">
+                    <input class="form-control" placeholder="Add new skill" value="@NewSkillText" @oninput="OnNewSkillTextInput" />
+                    <button type="button" class="btn btn-outline-primary" @onclick="OnAddSkill">
+                        <i class="bi bi-plus-lg me-1"></i>Add
+                    </button>
+                </div>
+
+                <h6 class="text-secondary border-bottom pb-2 fw-bold right-panel-section-title">Languages</h6>
+                @if (AnalysisResult.Languages != null && AnalysisResult.Languages.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        @foreach (var lang in AnalysisResult.Languages.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
+                        {
+                            <span class="badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 fs-6">@lang</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted small mb-4">No languages found.</div>
+                }
+
+                <h6 class="text-secondary border-bottom pb-2 fw-bold right-panel-section-title">Experience</h6>
+                @if (AnalysisResult.Experience != null)
+                {
+                    for (int i = 0; i < AnalysisResult.Experience.Count; i++)
+                    {
+                        <div class="card mb-3 bg-light border right-panel-data-card">
+                            <div class="card-body p-3">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="small text-muted mb-1">Company</label>
+                                        <input type="text" class="form-control" @bind-value="AnalysisResult.Experience[i].Company" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small text-muted mb-1">Title</label>
+                                        <input type="text" class="form-control" @bind-value="AnalysisResult.Experience[i].Title" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <h6 class="text-secondary border-bottom pb-2 mt-4 fw-bold right-panel-section-title">Education</h6>
+                @if (AnalysisResult.Education != null)
+                {
+                    for (int i = 0; i < AnalysisResult.Education.Count; i++)
+                    {
+                        <div class="card mb-3 bg-light border right-panel-data-card">
+                            <div class="card-body p-3">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="small text-muted mb-1">School</label>
+                                        <input type="text" class="form-control" @bind-value="AnalysisResult.Education[i].School" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small text-muted mb-1">Degree</label>
+                                        <input type="text" class="form-control" @bind-value="AnalysisResult.Education[i].Degree" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="card-footer bg-white p-3 right-panel-footer">
+                <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" disabled="@IsSaving" @onclick="OnSaveResumeData">
+                    @if (IsSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span><span>Saving Data...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-2"></i> <span>Save All Changes</span>
+                    }
+                </button>
+                @if (SaveError != null)
+                {
+                    <div class="alert alert-danger mt-3 mb-0">@SaveError</div>
+                }
+                @if (SaveSuccess != null)
+                {
+                    <div class="alert alert-success mt-3 mb-0">@SaveSuccess</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (IsJobsView)
+    {
+        <div class="card shadow border-0 h-100 right-panel-card">
+            <div class="card-header d-flex justify-content-between align-items-center py-3 right-panel-header right-panel-header-jobs">
+                <h5 class="mb-0 fw-bold">
+                    <i class="bi bi-briefcase-fill me-2"></i>Job Matches (@JobRecommendations.Count)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="OnCloseRightPanel"></button>
+            </div>
+            <div class="card-body p-3 overflow-auto custom-scrollbar right-panel-body" style="max-height: 78vh;">
+                @if (JobRecommendations.Count == 0 && !IsGettingJobs)
+                {
+                    <div class="text-center text-muted p-5">
+                        <i class="bi bi-search display-1 text-light"></i>
+                        <h5 class="mt-3">No jobs found or fetch failed.</h5>
+                        <p>Try analyzing your CV again or check the API connection.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-grid gap-3">
+                        @foreach (var job in JobRecommendations)
+                        {
+                            <div class="card border border-light shadow-sm right-panel-job-card">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title fw-bold text-dark mb-0 pe-2">@job.Title</h6>
+                                        @if (!string.IsNullOrWhiteSpace(job.Link))
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary px-3 rounded-pill" href="@job.Link" target="_blank" rel="noopener">Apply</a>
+                                        }
+                                    </div>
+                                    <div class="text-muted small mb-2">
+                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>@job.Location
+                                        @if (!string.IsNullOrWhiteSpace(job.Source))
+                                        {
+                                            <span class="ms-3"><i class="bi bi-building-fill text-secondary me-1"></i>@job.Source</span>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(job.Snippet))
+                                    {
+                                        <div class="card-text small text-secondary bg-light p-2 rounded mt-2 border-start border-3 border-success">
+                                            @((MarkupString)FormatJobSnippet(job.Snippet))
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsAnalysisView { get; set; }
+    [Parameter] public bool IsJobsView { get; set; }
+
+    [Parameter] public ResumeAnalysisModel? AnalysisResult { get; set; }
+    [Parameter] public List<string> EditableSkillList { get; set; } = new();
+    [Parameter] public HashSet<string> SelectedSkillsForSearch { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public int? EditingSkillIndex { get; set; }
+    [Parameter] public string EditingSkillText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> EditingSkillTextChanged { get; set; }
+    [Parameter] public string NewSkillText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> NewSkillTextChanged { get; set; }
+
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public bool ShowSaveFeedback { get; set; }
+    [Parameter] public string? SaveError { get; set; }
+    [Parameter] public string? SaveSuccess { get; set; }
+
+    [Parameter] public bool IsGettingJobs { get; set; }
+    [Parameter] public List<JobListingModel> JobRecommendations { get; set; } = new();
+
+    [Parameter] public EventCallback OnCloseRightPanel { get; set; }
+    [Parameter] public EventCallback OnSaveResumeData { get; set; }
+    [Parameter] public EventCallback OnSaveEditSkill { get; set; }
+    [Parameter] public EventCallback OnCancelEditSkill { get; set; }
+    [Parameter] public EventCallback<int> OnStartEditSkill { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveSkillAt { get; set; }
+    [Parameter] public EventCallback<string> OnToggleSkillSelection { get; set; }
+    [Parameter] public EventCallback OnAddSkill { get; set; }
+
+    [Parameter, EditorRequired] public Func<string, string> FormatJobSnippet { get; set; } = default!;
+
+    private async Task OnEditingSkillTextInput(ChangeEventArgs e)
+    {
+        await EditingSkillTextChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+    }
+
+    private async Task OnNewSkillTextInput(ChangeEventArgs e)
+    {
+        await NewSkillTextChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+    }
+}
