@@ -1,54 +1,219 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using SmartResume.Client.Auth
+@using System.Timers
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject HttpClient Http
+@implements IDisposable
 
 <header class="top-bar">
-    <div class="container-fluid top-bar-inner">
-        <a class="navbar-brand brand-logo" href="">
-            <span class="bi bi-file-earmark-person me-2"></span>
-            SmartCV
+    <div class="top-bar-inner">
+
+        @* Brand *@
+        <a class="brand-logo" href="">
+            <i class="bi bi-file-earmark-person-fill brand-icon"></i>
+            Smart<span class="brand-accent">CV</span>
         </a>
 
+        @* Center: Clock + Weather *@
+        <div class="top-bar-center">
+            <div class="info-chip">
+                <i class="bi bi-clock"></i>
+                <span>@_currentTime</span>
+            </div>
+
+            @if (_weather != null)
+            {
+                <div class="info-chip weather-chip" title="@_weather.Description">
+                    <i class="bi @_weather.Icon"></i>
+                    <span>@_weather.Temp°C</span>
+                    <span class="weather-city">@_weather.City</span>
+                </div>
+            }
+            else if (_weatherLoading)
+            {
+                <div class="info-chip">
+                    <span class="spinner-border spinner-border-sm opacity-50"></span>
+                </div>
+            }
+        </div>
+
+        @* Right: Theme toggle + Nav *@
         <nav class="nav-actions">
+            <button class="icon-btn theme-toggle" @onclick="ToggleTheme" title="Toggle theme">
+                @if (_isDark)
+                {
+                    <i class="bi bi-sun-fill"></i>
+                }
+                else
+                {
+                    <i class="bi bi-moon-stars-fill"></i>
+                }
+            </button>
+
             <AuthorizeView>
                 <Authorized>
                     <NavLink class="nav-btn" href="my-resumes">
-                        <span class="bi bi-files me-1"></span>
-                        My Resumes
+                        <i class="bi bi-files me-1"></i>My Resumes
                     </NavLink>
-
                     <button class="nav-btn logout-btn" @onclick="Logout">
-                        <span class="bi bi-box-arrow-right me-1"></span>
-                        Logout
+                        <i class="bi bi-box-arrow-right me-1"></i>Logout
                     </button>
                 </Authorized>
-
                 <NotAuthorized>
-                    <NavLink class="nav-btn" href="register">
-                        Register
-                    </NavLink>
-
-                    <NavLink class="nav-btn primary-btn" href="login">
-                        Login
-                    </NavLink>
+                    <NavLink class="nav-btn" href="register">Register</NavLink>
+                    <NavLink class="nav-btn primary-btn" href="login">Login</NavLink>
                 </NotAuthorized>
             </AuthorizeView>
         </nav>
+
     </div>
 </header>
 
 @code {
+    private string _currentTime = string.Empty;
+    private Timer? _clockTimer;
+    private bool _isDark = true;
+    private WeatherInfo? _weather;
+    private bool _weatherLoading = false;
+
+    protected override void OnInitialized()
+    {
+        UpdateTime();
+        _clockTimer = new Timer(1000);
+        _clockTimer.Elapsed += (_, _) => InvokeAsync(() => { UpdateTime(); StateHasChanged(); });
+        _clockTimer.Start();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var saved = await JS.InvokeAsync<string>("themeManager.init");
+        _isDark = saved != "light";
+        StateHasChanged();
+
+        await LoadWeather();
+    }
+
+    private void UpdateTime() => _currentTime = DateTime.Now.ToString("HH:mm:ss");
+
+    private async Task ToggleTheme()
+    {
+        _isDark = !_isDark;
+        await JS.InvokeVoidAsync("themeManager.set", _isDark ? "dark" : "light");
+        StateHasChanged();
+    }
+
+    private async Task LoadWeather()
+    {
+        _weatherLoading = true;
+        StateHasChanged();
+        try
+        {
+            double lat, lon;
+            try
+            {
+                var pos = await JS.InvokeAsync<GeoPosition>("getGeolocation");
+                lat = pos.Latitude; lon = pos.Longitude;
+            }
+            catch { lat = 41.01; lon = 28.95; }
+
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var url = $"https://api.open-meteo.com/v1/forecast?latitude={lat.ToString(inv)}&longitude={lon.ToString(inv)}&current_weather=true";
+            var result = await Http.GetFromJsonAsync<OpenMeteoResponse>(url);
+
+            if (result?.current_weather != null)
+            {
+                var cw = result.current_weather;
+                _weather = new WeatherInfo
+                {
+                    Temp = (int)Math.Round(cw.temperature),
+                    Icon = WmoToIcon(cw.weathercode, cw.is_day == 1),
+                    Description = WmoToDescription(cw.weathercode),
+                    City = await ReverseGeocode(lat, lon)
+                };
+            }
+        }
+        catch { }
+        finally { _weatherLoading = false; StateHasChanged(); }
+    }
+
+    private async Task<string> ReverseGeocode(double lat, double lon)
+    {
+        try
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var url = $"https://nominatim.openstreetmap.org/reverse?lat={lat.ToString(inv)}&lon={lon.ToString(inv)}&format=json";
+            var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("User-Agent", "SmartCV-App/1.0");
+            var resp = await Http.SendAsync(req);
+            if (resp.IsSuccessStatusCode)
+            {
+                var data = await resp.Content.ReadFromJsonAsync<NominatimResponse>();
+                return data?.address?.city ?? data?.address?.town ?? data?.address?.county ?? "—";
+            }
+        }
+        catch { }
+        return "—";
+    }
+
+    private static string WmoToIcon(int code, bool isDay) => code switch
+    {
+        0             => isDay ? "bi-sun-fill" : "bi-moon-stars-fill",
+        1 or 2        => isDay ? "bi-cloud-sun-fill" : "bi-cloud-moon-fill",
+        3             => "bi-clouds-fill",
+        45 or 48      => "bi-cloud-fog2-fill",
+        51 or 53 or 55 or 61 or 63 or 65 => "bi-cloud-drizzle-fill",
+        71 or 73 or 75 or 77              => "bi-cloud-snow-fill",
+        80 or 81 or 82                    => "bi-cloud-rain-fill",
+        85 or 86      => "bi-cloud-sleet-fill",
+        95 or 96 or 99 => "bi-cloud-lightning-rain-fill",
+        _             => "bi-cloud-fill"
+    };
+
+    private static string WmoToDescription(int code) => code switch
+    {
+        0             => "Clear sky",
+        1 or 2        => "Partly cloudy",
+        3             => "Overcast",
+        45 or 48      => "Foggy",
+        51 or 53 or 55 => "Drizzle",
+        61 or 63 or 65 => "Rain",
+        71 or 73 or 75 => "Snow",
+        80 or 81 or 82 => "Showers",
+        95            => "Thunderstorm",
+        _             => "Cloudy"
+    };
+
     private async Task Logout()
     {
         await LocalStorage.RemoveItemAsync("authToken");
-
-        if (AuthStateProvider is ApiAuthenticationStateProvider customAuthProvider)
-        {
-            customAuthProvider.MarkUserAsLoggedOut();
-        }
-
+        if (AuthStateProvider is ApiAuthenticationStateProvider p)
+            p.MarkUserAsLoggedOut();
         NavigationManager.NavigateTo("login", true);
     }
+
+    public void Dispose() => _clockTimer?.Dispose();
+
+    private record WeatherInfo
+    {
+        public int Temp { get; init; }
+        public string Icon { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+        public string City { get; init; } = string.Empty;
+    }
+
+    private record GeoPosition
+    {
+        public double Latitude { get; init; }
+        public double Longitude { get; init; }
+    }
+
+    private class OpenMeteoResponse { public CurrentWeather? current_weather { get; set; } }
+    private class CurrentWeather { public double temperature { get; set; } public int weathercode { get; set; } public int is_day { get; set; } }
+    private class NominatimResponse { public NominatimAddress? address { get; set; } }
+    private class NominatimAddress { public string? city { get; set; } public string? town { get; set; } public string? county { get; set; } }
 }

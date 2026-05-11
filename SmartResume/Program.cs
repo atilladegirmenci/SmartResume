@@ -19,14 +19,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowBlazorClient",
+   options.AddPolicy("AllowBlazorClient",
         policy =>
         {
             policy
-               .WithOrigins(
+                .WithOrigins(
                     "https://localhost:7099",
                     "http://localhost:5207",
-                    "http://localhost:7099")
+                    "http://localhost:7099",
+                    "http://localhost:5039",
+                    "http://localhost:7067"
+                )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -71,7 +74,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AllowBlazorClient");
 app.UseAuthentication();
 

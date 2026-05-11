@@ -1,0 +1,340 @@
+/* ════════════════════════════════════════════════════════
+   SmartCV — Design Token System
+   ════════════════════════════════════════════════════════ */
+
+/* ── DARK ───────────────────────────────────────────────── */
+[data-theme="dark"] {
+    --bg-page:              #13151f;
+    --bg-surface:           #1a1d2e;
+    --bg-card:              #1f2235;
+    --bg-card-hover:        #252840;
+    --bg-glass:             rgba(255,255,255,0.04);
+    --bg-glass-hover:       rgba(255,255,255,0.07);
+    --bg-input:             #161828;
+    --bg-overlay:           rgba(0,0,0,0.55);
+
+    --border-subtle:        rgba(255,255,255,0.06);
+    --border-default:       rgba(255,255,255,0.1);
+    --border-active:        #7b82f6;
+    --border-focus:         #7b82f6;
+
+    --text-primary:         #e8eaf6;
+    --text-secondary:       #9da5c0;
+    --text-muted:           #636b85;
+    --text-on-accent:       #ffffff;
+    --text-link:            #a5b4fc;
+
+    --accent:               #6366f1;
+    --accent-hover:         #5254cc;
+    --accent-light:         rgba(99,102,241,0.14);
+    --accent-glow:          rgba(99,102,241,0.25);
+    --accent-2:             #22d3ee;
+
+    --topbar-bg:            #0e1018;
+    --topbar-border:        rgba(255,255,255,0.06);
+    --topbar-text:          #e2e6f6;
+
+    --chip-bg:              rgba(255,255,255,0.07);
+    --chip-border:          rgba(255,255,255,0.11);
+    --chip-text:            #d8ddf0;
+    --chip-icon:            #818cf8;
+
+    --panel-bg:             #1a1d2e;
+    --panel-header-bg:      #1e2138;
+    --panel-border:         rgba(255,255,255,0.07);
+
+    --input-bg:             #13151f;
+    --input-border:         rgba(255,255,255,0.1);
+    --input-text:           #e8eaf6;
+    --input-placeholder:    #4a5168;
+    --input-focus-border:   #7b82f6;
+    --input-focus-glow:     rgba(123,130,246,0.18);
+
+    --btn-ghost-bg:         rgba(255,255,255,0.05);
+    --btn-ghost-border:     rgba(255,255,255,0.1);
+    --btn-ghost-text:       #d0d5ee;
+
+    --badge-bg:             rgba(99,102,241,0.15);
+    --badge-text:           #c7d2fe;
+    --badge-border:         rgba(99,102,241,0.28);
+
+    --success-bg:           rgba(16,185,129,0.1);
+    --success-border:       rgba(16,185,129,0.25);
+    --success-text:         #6ee7b7;
+    --success-solid:        #10b981;
+
+    --warning-bg:           rgba(234,179,8,0.1);
+    --warning-border:       rgba(234,179,8,0.28);
+    --warning-text:         #fde68a;
+    --warning-solid:        #eab308;
+
+    --danger-bg:            rgba(239,68,68,0.1);
+    --danger-border:        rgba(239,68,68,0.28);
+    --danger-text:          #fca5a5;
+    --danger-solid:         #ef4444;
+
+    --scrollbar-track:      #13151f;
+    --scrollbar-thumb:      #2a2d44;
+    --scrollbar-hover:      #6366f1;
+
+   
+    --shell-bg:              radial-gradient(ellipse at 15% 25%, #1e1b6e 0%, #0d1117 55%, #050810 100%);
+    --shell-text:            #eef0f8;
+    --shell-subtitle:        rgba(200,215,250,0.78);
+    --shell-trust:           rgba(180,200,240,0.55);
+    --shell-label:           rgba(200,215,250,0.85);
+    --shell-link:            #a5b4fc;
+    --shell-gradient-text:   linear-gradient(135deg, #a5b4fc, #67e8f9);
+
+    --card-glass-bg:         rgba(255,255,255,0.04);
+    --card-glass-border:     rgba(255,255,255,0.1);
+    --card-glass-shadow:     0 24px 64px rgba(0,0,0,0.5);
+
+    --auth-input-bg:         rgba(255,255,255,0.06);
+    --auth-input-bg-focus:   rgba(255,255,255,0.09);
+    --auth-input-border:     rgba(255,255,255,0.12);
+    --auth-input-text:       #eef0f8;
+    --auth-input-placeholder:rgba(180,195,230,0.45);
+    --auth-autofill-bg:      #1a1f35;
+
+    --orb-opacity:           0.35;
+     color-scheme: dark;
+}
+
+/* ── LIGHT ──────────────────────────────────────────────── */
+[data-theme="light"] {
+    --bg-page:              #eef1f8;
+    --bg-surface:           #ffffff;
+    --bg-card:              #ffffff;
+    --bg-card-hover:        #f5f7ff;
+    --bg-glass:             rgba(0,0,0,0.025);
+    --bg-glass-hover:       rgba(0,0,0,0.055);
+    --bg-input:             #ffffff;
+    --bg-overlay:           rgba(0,0,0,0.4);
+
+    --border-subtle:        #dde2ee;
+    --border-default:       #c8d0e0;
+    --border-active:        #6366f1;
+    --border-focus:         #6366f1;
+
+    --text-primary:         #0f1220;
+    --text-secondary:       #3a4260;
+    --text-muted:           #6b7590;
+    --text-on-accent:       #ffffff;
+    --text-link:            #4338ca;
+
+    --accent:               #6366f1;
+    --accent-hover:         #4f46e5;
+    --accent-light:         rgba(99,102,241,0.09);
+    --accent-glow:          rgba(99,102,241,0.2);
+    --accent-2:             #0891b2;
+
+       
+    --topbar-bg:            #1e2d5e;
+    --topbar-border:        rgba(255,255,255,0.1);
+    --topbar-text:          #eef1fb;
+
+    
+    --chip-bg:              rgba(255,255,255,0.13);
+    --chip-border:          rgba(255,255,255,0.22);
+    --chip-text:            #eef1fb;
+    --chip-icon:            #c7d2fe;
+
+    --panel-bg:             #ffffff;
+    --panel-header-bg:      #f5f7ff;
+    --panel-border:         #dde2ee;
+
+    --input-bg:             #ffffff;
+    --input-border:         #c8d0e0;
+    --input-text:           #0f1220;
+    --input-placeholder:    #8892aa;
+    --input-focus-border:   #6366f1;
+    --input-focus-glow:     rgba(99,102,241,0.15);
+
+    --btn-ghost-bg:         rgba(255,255,255,0.12);
+    --btn-ghost-border:     rgba(255,255,255,0.22);
+    --btn-ghost-text:       #eef1fb;
+
+    --badge-bg:             rgba(99,102,241,0.08);
+    --badge-text:           #3730a3;
+    --badge-border:         rgba(99,102,241,0.2);
+
+    --success-bg:           #ecfdf5;
+    --success-border:       #a7f3d0;
+    --success-text:         #064e3b;
+    --success-solid:        #059669;
+
+    --warning-bg:           #fffbeb;
+    --warning-border:       #fcd34d;
+    --warning-text:         #78350f;
+    --warning-solid:        #d97706;
+
+    --danger-bg:            #fef2f2;
+    --danger-border:        #fecaca;
+    --danger-text:          #7f1d1d;
+    --danger-solid:         #dc2626;
+
+    --scrollbar-track:      #eef1f8;
+    --scrollbar-thumb:      #c8d0e0;
+    --scrollbar-hover:      #6366f1;
+--shell-bg:            linear-gradient(135deg, #c7d7ff 0%, #ddd0ff 45%, #c0e8ff 100%);
+--shell-text:          #1a1d3e;
+--shell-subtitle:      #4a5280;
+--shell-trust:         #7b85a8;
+--shell-label:         #3a4260;
+--shell-link:          #4338ca;
+--shell-gradient-text: linear-gradient(135deg, #4f46e5, #0891b2);
+--orb-opacity:         0.25;
+    --card-glass-bg:         rgba(255,255,255,0.65);
+    --card-glass-border:     rgba(99,102,241,0.15);
+    --card-glass-shadow:     0 24px 64px rgba(99,102,241,0.12);
+
+    --auth-input-bg:         rgba(255,255,255,0.8);
+    --auth-input-bg-focus:   rgba(255,255,255,0.95);
+    --auth-input-border:     rgba(99,102,241,0.2);
+    --auth-input-text:       #1a1d3e;
+    --auth-input-placeholder:#8892aa;
+    --auth-autofill-bg:      #ffffff;
+
+
+    color-scheme: light;
+}
+
+/* ════════════════════════════════════════════════════════
+   Global base
+   ════════════════════════════════════════════════════════ */
+html, body {
+    margin: 0; padding: 0;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    transition: background-color 0.25s, color 0.25s;
+    min-height: 100dvh;
+}
+
+/* ── Bootstrap override'ları — her iki temada doğru renk ── */
+.text-muted     { color: var(--text-muted)     !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-dark      { color: var(--text-primary)   !important; }
+small, .small   { color: var(--text-secondary) !important; }
+
+.card {
+    background-color: var(--bg-card)       !important;
+    border-color:     var(--border-default) !important;
+    color:            var(--text-primary)   !important;
+}
+.card-header {
+    background-color: var(--panel-header-bg) !important;
+    border-color:     var(--border-default)  !important;
+    color:            var(--text-primary)    !important;
+}
+.card-body  { color: var(--text-primary) !important; }
+.card-footer{
+    background-color: var(--panel-header-bg) !important;
+    border-color:     var(--border-default)  !important;
+}
+.card-title, .card-text { color: var(--text-primary) !important; }
+
+h1,h2,h3,h4,h5,h6 { color: var(--text-primary) !important; }
+p, span, li, td, th { color: inherit; }
+label { color: var(--text-secondary) !important; }
+
+.form-control, .form-select {
+    background-color: var(--input-bg)    !important;
+    border-color:     var(--input-border)!important;
+    color:            var(--input-text)  !important;
+}
+.form-control::placeholder { color: var(--input-placeholder) !important; }
+.form-control:focus, .form-select:focus {
+    background-color: var(--input-bg)          !important;
+    border-color:     var(--input-focus-border)!important;
+    color:            var(--input-text)        !important;
+    box-shadow: 0 0 0 3px var(--input-focus-glow) !important;
+}
+.form-label { color: var(--text-secondary) !important; }
+
+.alert-danger   { background: var(--danger-bg)  !important; border-color: var(--danger-border)  !important; color: var(--danger-text)  !important; }
+.alert-warning  { background: var(--warning-bg) !important; border-color: var(--warning-border) !important; color: var(--warning-text) !important; }
+.alert-success  { background: var(--success-bg) !important; border-color: var(--success-border) !important; color: var(--success-text) !important; }
+.alert-secondary{ background: var(--bg-card)    !important; border-color: var(--border-default) !important; color: var(--text-secondary) !important; }
+
+.badge {
+    background-color: var(--badge-bg)    !important;
+    color:            var(--badge-text)  !important;
+    border-color:     var(--badge-border)!important;
+}
+.bg-light       { background-color: var(--bg-surface)  !important; }
+.border         { border-color: var(--border-default)   !important; }
+.border-bottom  { border-color: var(--border-subtle)    !important; }
+.border-start   { border-color: var(--border-default)   !important; }
+
+/* input-group içi */
+.input-group-text {
+    background-color: var(--panel-header-bg) !important;
+    border-color:     var(--input-border)    !important;
+    color:            var(--text-secondary)  !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar             { width:6px; height:6px; }
+::-webkit-scrollbar-track       { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb       { background: var(--scrollbar-thumb); border-radius:99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+.custom-scrollbar::-webkit-scrollbar       { width:5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius:99px; }
+/* ── Light mod shell orb renkleri ─────────────────────── */
+[data-theme="light"] .auth-orb-1,
+[data-theme="light"] .orb-1 {
+    background: #6366f1;
+    filter: blur(80px);
+}
+
+[data-theme="light"] .auth-orb-2,
+[data-theme="light"] .orb-2 {
+    background: #a78bfa;
+    filter: blur(80px);
+}
+
+[data-theme="light"] .orb-3 {
+    background: #38bdf8;
+    filter: blur(80px);
+}
+
+/* ── Light mod auth/splash card ────────────────────────── */
+[data-theme="light"] .auth-card,
+[data-theme="light"] .splash-card {
+    background: rgba(255, 255, 255, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.7) !important;
+    box-shadow: 0 20px 60px rgba(99, 102, 241, 0.15) !important;
+    color: #1a1d3e !important;
+}
+
+[data-theme="light"] .auth-title,
+[data-theme="light"] .splash-title { color: #1a1d3e !important; }
+
+[data-theme="light"] .auth-subtitle,
+[data-theme="light"] .splash-subtitle { color: #3a4260 !important; }
+
+[data-theme="light"] .auth-switch { color: #3a4260 !important; }
+[data-theme="light"] .auth-switch a { color: #4338ca !important; }
+
+[data-theme="light"] .auth-field label { color: #3a4260 !important; }
+
+[data-theme="light"] ::deep .auth-input {
+    background: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(99, 102, 241, 0.25) !important;
+    color: #1a1d3e !important;
+}
+[data-theme="light"] ::deep .auth-input::placeholder {
+    color: #8892aa !important;
+}
+[data-theme="light"] ::deep .auth-input:focus {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-color: #6366f1 !important;
+}
+
+[data-theme="light"] .auth-btn {
+    background: linear-gradient(135deg, #6366f1, #0891b2) !important;
+}
+
+[data-theme="light"] .trust-note { color: #6b7590 !important; }
